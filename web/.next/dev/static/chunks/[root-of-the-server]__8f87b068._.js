@@ -482,6 +482,38 @@ function SearchBar({ onSearch }) {
     const [location, setLocation] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useState"])('San Francisco, CA');
     const [coords, setCoords] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [usingLocation, setUsingLocation] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "SearchBar.useEffect": ()=>{
+            // Prefill from cached location if available
+            let mounted = true;
+            ({
+                "SearchBar.useEffect": async ()=>{
+                    try {
+                        const { getCachedLocation, reverseGeocode } = await __turbopack_context__.A("[project]/web/lib/location.ts [client] (ecmascript, async loader)");
+                        const cached = getCachedLocation();
+                        if (cached && mounted) {
+                            setCoords(cached);
+                            // Try to reverse-geocode to friendly label
+                            try {
+                                const label = await reverseGeocode(cached.latitude, cached.longitude);
+                                if (label) setLocation(label);
+                                else setLocation(`${cached.latitude.toFixed(5)},${cached.longitude.toFixed(5)}`);
+                            } catch (e) {
+                                setLocation(`${cached.latitude.toFixed(5)},${cached.longitude.toFixed(5)}`);
+                            }
+                        }
+                    } catch (e) {
+                    // ignore
+                    }
+                }
+            })["SearchBar.useEffect"]();
+            return ({
+                "SearchBar.useEffect": ()=>{
+                    mounted = false;
+                }
+            })["SearchBar.useEffect"];
+        }
+    }["SearchBar.useEffect"], []);
     const handleSubmit = (e)=>{
         e.preventDefault();
         onSearch?.(query, location, coords);
@@ -501,7 +533,7 @@ function SearchBar({ onSearch }) {
                                 children: "Find"
                             }, void 0, false, {
                                 fileName: "[project]/web/components/SearchBar.tsx",
-                                lineNumber: 22,
+                                lineNumber: 47,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -511,13 +543,13 @@ function SearchBar({ onSearch }) {
                                 className: "jsx-cd98c2986fa48398"
                             }, void 0, false, {
                                 fileName: "[project]/web/components/SearchBar.tsx",
-                                lineNumber: 23,
+                                lineNumber: 48,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/web/components/SearchBar.tsx",
-                        lineNumber: 21,
+                        lineNumber: 46,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -528,7 +560,7 @@ function SearchBar({ onSearch }) {
                                 children: "Near"
                             }, void 0, false, {
                                 fileName: "[project]/web/components/SearchBar.tsx",
-                                lineNumber: 30,
+                                lineNumber: 55,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -538,7 +570,7 @@ function SearchBar({ onSearch }) {
                                 className: "jsx-cd98c2986fa48398"
                             }, void 0, false, {
                                 fileName: "[project]/web/components/SearchBar.tsx",
-                                lineNumber: 31,
+                                lineNumber: 56,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -570,24 +602,24 @@ function SearchBar({ onSearch }) {
                                     children: usingLocation ? 'Locating…' : 'Use my location'
                                 }, void 0, false, {
                                     fileName: "[project]/web/components/SearchBar.tsx",
-                                    lineNumber: 37,
+                                    lineNumber: 62,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/web/components/SearchBar.tsx",
-                                lineNumber: 36,
+                                lineNumber: 61,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/web/components/SearchBar.tsx",
-                        lineNumber: 29,
+                        lineNumber: 54,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/web/components/SearchBar.tsx",
-                lineNumber: 20,
+                lineNumber: 45,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -596,7 +628,7 @@ function SearchBar({ onSearch }) {
                 children: "Search"
             }, void 0, false, {
                 fileName: "[project]/web/components/SearchBar.tsx",
-                lineNumber: 56,
+                lineNumber: 81,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$styled$2d$jsx$2f$style$2e$js__$5b$client$5d$__$28$ecmascript$29$__["default"], {
@@ -606,11 +638,11 @@ function SearchBar({ onSearch }) {
         ]
     }, void 0, true, {
         fileName: "[project]/web/components/SearchBar.tsx",
-        lineNumber: 19,
+        lineNumber: 44,
         columnNumber: 5
     }, this);
 }
-_s(SearchBar, "ylmZu1dw5QKtO1Zjq8il0itLDhk=");
+_s(SearchBar, "ovxzWMj3oOwf4vin+WxmSUscf4E=");
 _c = SearchBar;
 var _c;
 __turbopack_context__.k.register(_c, "SearchBar");
@@ -694,10 +726,19 @@ function mapApiBarberToUi(b) {
     // DB-backed barber
     if (b && (b.trust_score || b.thumbnail_url || b.distance_m !== undefined)) {
         const trustVal = b.trust_score ? typeof b.trust_score.value === 'number' ? b.trust_score.value : Number(b.trust_score.value) : 0;
+        // Normalize shop field: it may be an object (shop row) or a string
+        let shopStr = '';
+        if (b.primary_location && b.primary_location.formatted_address) shopStr = b.primary_location.formatted_address;
+        else if (b.shop) {
+            if (typeof b.shop === 'string') shopStr = b.shop;
+            else if (typeof b.shop === 'object') shopStr = b.shop.name || b.shop.formatted_address || JSON.stringify({
+                id: b.shop.id
+            }).replace(/[{}\"]+/g, '') || '';
+        }
         return {
             id: b.id,
             name: b.name || '',
-            shop: b.primary_location && b.primary_location.formatted_address || b.shop || '',
+            shop: shopStr,
             distance: b.distance_m ? `${(b.distance_m / 1609).toFixed(1)} mi` : b.distance || '',
             trust: Number.isFinite(trustVal) ? trustVal : 0,
             specialties: b.top_tags || b.specialties || [],
@@ -789,8 +830,51 @@ const MOCK_BARBERS = [
 function Home() {
     _s();
     const [results, setResults] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useState"])(MOCK_BARBERS);
+    const [latestPositive, setLatestPositive] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "Home.useEffect": ()=>{
+            let cancelled = false;
+            const apiBase = ("TURBOPACK compile-time value", "http://localhost:3000") || 'http://localhost:3000';
+            const fetchLatest = {
+                "Home.useEffect.fetchLatest": async (lat, lon)=>{
+                    try {
+                        const url = new URL('/api/reviews/most-recent-positive', apiBase);
+                        url.searchParams.set('latitude', String(lat));
+                        url.searchParams.set('longitude', String(lon));
+                        url.searchParams.set('radius_miles', '20');
+                        const res = await fetch(url.toString());
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        if (cancelled) return;
+                        if (data && data.found) setLatestPositive(data);
+                    } catch (e) {
+                    // ignore
+                    }
+                }
+            }["Home.useEffect.fetchLatest"];
+            if (typeof navigator !== 'undefined' && navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition({
+                    "Home.useEffect": (pos)=>fetchLatest(pos.coords.latitude, pos.coords.longitude)
+                }["Home.useEffect"], {
+                    "Home.useEffect": ()=>{
+                        // fallback center (San Francisco)
+                        fetchLatest(37.7749, -122.4194);
+                    }
+                }["Home.useEffect"], {
+                    timeout: 5000
+                });
+            } else {
+                fetchLatest(37.7749, -122.4194);
+            }
+            return ({
+                "Home.useEffect": ()=>{
+                    cancelled = true;
+                }
+            })["Home.useEffect"];
+        }
+    }["Home.useEffect"], []);
     const handleSearch = async (term, location)=>{
         // (old signature supported only term+location). If caller supplies coords, they will be appended.
         setLoading(true);
@@ -836,7 +920,7 @@ function Home() {
                                 children: "Find your next barber"
                             }, void 0, false, {
                                 fileName: "[project]/web/pages/index.tsx",
-                                lineNumber: 82,
+                                lineNumber: 118,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -844,7 +928,7 @@ function Home() {
                                 children: "Search barbers by style, trust, and distance"
                             }, void 0, false, {
                                 fileName: "[project]/web/pages/index.tsx",
-                                lineNumber: 83,
+                                lineNumber: 119,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -852,7 +936,7 @@ function Home() {
                                 children: "See real trust scores, recent cuts, and specialties before you book."
                             }, void 0, false, {
                                 fileName: "[project]/web/pages/index.tsx",
-                                lineNumber: 84,
+                                lineNumber: 120,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -862,7 +946,7 @@ function Home() {
                                         onSearch: handleSearch
                                     }, void 0, false, {
                                         fileName: "[project]/web/pages/index.tsx",
-                                        lineNumber: 86,
+                                        lineNumber: 122,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -873,7 +957,7 @@ function Home() {
                                                 children: "Fade"
                                             }, void 0, false, {
                                                 fileName: "[project]/web/pages/index.tsx",
-                                                lineNumber: 88,
+                                                lineNumber: 124,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -881,7 +965,7 @@ function Home() {
                                                 children: "Beard trim"
                                             }, void 0, false, {
                                                 fileName: "[project]/web/pages/index.tsx",
-                                                lineNumber: 89,
+                                                lineNumber: 125,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -889,7 +973,7 @@ function Home() {
                                                 children: "Mobile"
                                             }, void 0, false, {
                                                 fileName: "[project]/web/pages/index.tsx",
-                                                lineNumber: 90,
+                                                lineNumber: 126,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -897,25 +981,25 @@ function Home() {
                                                 children: "Open now"
                                             }, void 0, false, {
                                                 fileName: "[project]/web/pages/index.tsx",
-                                                lineNumber: 91,
+                                                lineNumber: 127,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/web/pages/index.tsx",
-                                        lineNumber: 87,
+                                        lineNumber: 123,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/web/pages/index.tsx",
-                                lineNumber: 85,
+                                lineNumber: 121,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/web/pages/index.tsx",
-                        lineNumber: 81,
+                        lineNumber: 117,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -926,7 +1010,7 @@ function Home() {
                                 children: "Map preview"
                             }, void 0, false, {
                                 fileName: "[project]/web/pages/index.tsx",
-                                lineNumber: 96,
+                                lineNumber: 132,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -934,24 +1018,92 @@ function Home() {
                                 children: "Map wiring TBD — will show clusters and pin cards."
                             }, void 0, false, {
                                 fileName: "[project]/web/pages/index.tsx",
-                                lineNumber: 97,
+                                lineNumber: 133,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/web/pages/index.tsx",
-                        lineNumber: 95,
+                        lineNumber: 131,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/web/pages/index.tsx",
-                lineNumber: 80,
+                lineNumber: 116,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
                 className: "jsx-e088e8d6ccfada59" + " " + "results",
                 children: [
+                    latestPositive && latestPositive.barber && latestPositive.review && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        style: {
+                            marginBottom: 18,
+                            padding: 14,
+                            border: '1px solid rgba(255,255,255,0.04)',
+                            borderRadius: 10,
+                            background: '#071018'
+                        },
+                        className: "jsx-e088e8d6ccfada59",
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
+                                style: {
+                                    margin: '0 0 6px'
+                                },
+                                className: "jsx-e088e8d6ccfada59",
+                                children: "Latest positive comment nearby"
+                            }, void 0, false, {
+                                fileName: "[project]/web/pages/index.tsx",
+                                lineNumber: 140,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                style: {
+                                    margin: 0
+                                },
+                                className: "jsx-e088e8d6ccfada59",
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                        className: "jsx-e088e8d6ccfada59",
+                                        children: latestPositive.barber.name
+                                    }, void 0, false, {
+                                        fileName: "[project]/web/pages/index.tsx",
+                                        lineNumber: 142,
+                                        columnNumber: 15
+                                    }, this),
+                                    latestPositive.barber.distance_m ? ` — ${(latestPositive.barber.distance_m / 1609.34).toFixed(1)} mi` : ''
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/web/pages/index.tsx",
+                                lineNumber: 141,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                style: {
+                                    margin: '6px 0 8px'
+                                },
+                                className: "jsx-e088e8d6ccfada59",
+                                children: latestPositive.review.summary
+                            }, void 0, false, {
+                                fileName: "[project]/web/pages/index.tsx",
+                                lineNumber: 145,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
+                                href: `/barber/${latestPositive.barber.id}`,
+                                className: "jsx-e088e8d6ccfada59" + " " + "link",
+                                children: "Open profile →"
+                            }, void 0, false, {
+                                fileName: "[project]/web/pages/index.tsx",
+                                lineNumber: 146,
+                                columnNumber: 13
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/web/pages/index.tsx",
+                        lineNumber: 139,
+                        columnNumber: 11
+                    }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "jsx-e088e8d6ccfada59" + " " + "results-head",
                         children: [
@@ -960,7 +1112,7 @@ function Home() {
                                 children: "Top nearby barbers"
                             }, void 0, false, {
                                 fileName: "[project]/web/pages/index.tsx",
-                                lineNumber: 103,
+                                lineNumber: 150,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -968,13 +1120,13 @@ function Home() {
                                 children: loading ? 'Searching Yelp…' : 'Powered by Yelp proxy'
                             }, void 0, false, {
                                 fileName: "[project]/web/pages/index.tsx",
-                                lineNumber: 104,
+                                lineNumber: 151,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/web/pages/index.tsx",
-                        lineNumber: 102,
+                        lineNumber: 149,
                         columnNumber: 9
                     }, this),
                     error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -985,7 +1137,7 @@ function Home() {
                         children: error
                     }, void 0, false, {
                         fileName: "[project]/web/pages/index.tsx",
-                        lineNumber: 106,
+                        lineNumber: 153,
                         columnNumber: 19
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1000,7 +1152,7 @@ function Home() {
                                         className: "jsx-e088e8d6ccfada59" + " " + "thumb"
                                     }, void 0, false, {
                                         fileName: "[project]/web/pages/index.tsx",
-                                        lineNumber: 110,
+                                        lineNumber: 157,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1014,20 +1166,20 @@ function Home() {
                                                         children: b.name
                                                     }, void 0, false, {
                                                         fileName: "[project]/web/pages/index.tsx",
-                                                        lineNumber: 113,
+                                                        lineNumber: 160,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$web$2f$components$2f$TrustScoreBadge$2e$tsx__$5b$client$5d$__$28$ecmascript$29$__["default"], {
                                                         score: b.trust
                                                     }, void 0, false, {
                                                         fileName: "[project]/web/pages/index.tsx",
-                                                        lineNumber: 114,
+                                                        lineNumber: 161,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/web/pages/index.tsx",
-                                                lineNumber: 112,
+                                                lineNumber: 159,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1039,7 +1191,7 @@ function Home() {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/web/pages/index.tsx",
-                                                lineNumber: 116,
+                                                lineNumber: 163,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1049,12 +1201,12 @@ function Home() {
                                                         children: s
                                                     }, s, false, {
                                                         fileName: "[project]/web/pages/index.tsx",
-                                                        lineNumber: 119,
+                                                        lineNumber: 166,
                                                         columnNumber: 21
                                                     }, this))
                                             }, void 0, false, {
                                                 fileName: "[project]/web/pages/index.tsx",
-                                                lineNumber: 117,
+                                                lineNumber: 164,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1065,45 +1217,45 @@ function Home() {
                                                         children: b.price
                                                     }, void 0, false, {
                                                         fileName: "[project]/web/pages/index.tsx",
-                                                        lineNumber: 123,
+                                                        lineNumber: 170,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
-                                                        href: `/barbers/${b.id}`,
+                                                        href: `/barber/${b.id}`,
                                                         className: "jsx-e088e8d6ccfada59" + " " + "link",
                                                         children: "View profile →"
                                                     }, void 0, false, {
                                                         fileName: "[project]/web/pages/index.tsx",
-                                                        lineNumber: 124,
+                                                        lineNumber: 171,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/web/pages/index.tsx",
-                                                lineNumber: 122,
+                                                lineNumber: 169,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/web/pages/index.tsx",
-                                        lineNumber: 111,
+                                        lineNumber: 158,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, b.id, true, {
                                 fileName: "[project]/web/pages/index.tsx",
-                                lineNumber: 109,
+                                lineNumber: 156,
                                 columnNumber: 13
                             }, this))
                     }, void 0, false, {
                         fileName: "[project]/web/pages/index.tsx",
-                        lineNumber: 107,
+                        lineNumber: 154,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/web/pages/index.tsx",
-                lineNumber: 101,
+                lineNumber: 137,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$styled$2d$jsx$2f$style$2e$js__$5b$client$5d$__$28$ecmascript$29$__["default"], {
@@ -1113,11 +1265,11 @@ function Home() {
         ]
     }, void 0, true, {
         fileName: "[project]/web/pages/index.tsx",
-        lineNumber: 79,
+        lineNumber: 115,
         columnNumber: 5
     }, this);
 }
-_s(Home, "AtiSb7tjkq3nAnf2J703anPjC4U=");
+_s(Home, "yBCWdfE+lX3EzGT49x6r4jRP3tA=");
 _c = Home;
 var _c;
 __turbopack_context__.k.register(_c, "Home");

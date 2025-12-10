@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SearchBar from '../components/SearchBar';
 import TrustScoreBadge from '../components/TrustScoreBadge';
 import { mapApiBarberToUi, UiBarber } from '../lib/adapters';
@@ -38,8 +38,44 @@ const MOCK_BARBERS = [
 
 export default function Home() {
   const [results, setResults] = useState<UiBarber[]>(MOCK_BARBERS as unknown as UiBarber[]);
+  const [latestPositive, setLatestPositive] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const fetchLatest = async (lat: number, lon: number) => {
+      try {
+        const url = new URL('/api/reviews/most-recent-positive', apiBase);
+        url.searchParams.set('latitude', String(lat));
+        url.searchParams.set('longitude', String(lon));
+        url.searchParams.set('radius_miles', '20');
+        const res = await fetch(url.toString());
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (data && data.found) setLatestPositive(data);
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => fetchLatest(pos.coords.latitude, pos.coords.longitude),
+        () => {
+          // fallback center (San Francisco)
+          fetchLatest(37.7749, -122.4194);
+        },
+        { timeout: 5000 }
+      );
+    } else {
+      fetchLatest(37.7749, -122.4194);
+    }
+
+    return () => { cancelled = true; };
+  }, []);
 
   const handleSearch = async (term: string, location: string) => {
     // (old signature supported only term+location). If caller supplies coords, they will be appended.
@@ -99,6 +135,17 @@ export default function Home() {
       </section>
 
       <section className="results">
+        {latestPositive && latestPositive.barber && latestPositive.review && (
+          <div style={{ marginBottom: 18, padding: 14, border: '1px solid rgba(255,255,255,0.04)', borderRadius: 10, background: '#071018' }}>
+            <h3 style={{ margin: '0 0 6px' }}>Latest positive comment nearby</h3>
+            <p style={{ margin: 0 }}>
+              <strong>{latestPositive.barber.name}</strong>
+              {latestPositive.barber.distance_m ? ` — ${(latestPositive.barber.distance_m/1609.34).toFixed(1)} mi` : ''}
+            </p>
+            <p style={{ margin: '6px 0 8px' }}>{latestPositive.review.summary}</p>
+            <a className="link" href={`/barber/${latestPositive.barber.id}`}>Open profile →</a>
+          </div>
+        )}
         <div className="results-head">
           <h2>Top nearby barbers</h2>
           <p>{loading ? 'Searching Yelp…' : 'Powered by Yelp proxy'}</p>
@@ -121,7 +168,7 @@ export default function Home() {
                 </p>
                 <div className="row bottom">
                   <span className="price">{b.price}</span>
-                  <a className="link" href={`/barbers/${b.id}`}>View profile →</a>
+                  <a className="link" href={`/barber/${b.id}`}>View profile →</a>
                 </div>
               </div>
             </article>

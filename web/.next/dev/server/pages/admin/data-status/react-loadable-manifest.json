@@ -1,0 +1,12 @@
+{
+  "[project]/web/components/DataStatusChart.tsx [client] (ecmascript, next/dynamic entry)": {
+    "id": "[project]/web/components/DataStatusChart.tsx [client] (ecmascript, next/dynamic entry)",
+    "files": [
+      "static/chunks/2374f_chart_js_auto_auto_402e7ec1.js",
+      "static/chunks/web_components_DataStatusChart_tsx_969359a2._.js",
+      "static/chunks/web_components_DataStatusChart_tsx_11b23dcc._.js",
+      "static/chunks/2374f_ed1b83f0._.js",
+      "static/chunks/2374f_chart_js_auto_auto_7d7e46eb.js"
+    ]
+  }
+}

@@ -91,12 +91,16 @@ async function computeBarberScore(barberId) {
           COUNT(ur.id) as user_review_count,
           COALESCE(SUM(CASE WHEN ur.would_return THEN 1 ELSE 0 END)::FLOAT / NULLIF(COUNT(ur.id), 0) * 100, 0) as would_return_pct,
           COUNT(ur.id) FILTER (WHERE ur.created_at > NOW() - INTERVAL '30 days') as recent_reviews_count,
-          COALESCE(AVG(rs.total_score), 50) as avg_review_credibility
+          COALESCE(AVG(rs.total_score), 50) as avg_review_credibility,
+          -- Include any existing aggregated Yelp data so it can influence the trust score
+          COALESCE(bs.yelp_rating, 0) as yelp_rating,
+          COALESCE(bs.yelp_review_count, 0) as yelp_review_count
         FROM barbers b
         LEFT JOIN user_reviews ur ON b.id = ur.barber_id
         LEFT JOIN review_scores rs ON ur.id = rs.review_id
+        LEFT JOIN barber_scores bs ON b.id = bs.barber_id
         WHERE b.id = $1
-        GROUP BY b.id
+        GROUP BY b.id, bs.yelp_rating, bs.yelp_review_count
       ),
       scoring AS (
         SELECT
@@ -110,10 +114,15 @@ async function computeBarberScore(barberId) {
             WHEN recent_reviews_count >= 5 THEN TRUE
             ELSE FALSE
           END as is_trending,
+          -- trust_score mixes our users' ratings with external Yelp signals.
+          -- Give substantial weight to Yelp star rating, and a capped logarithmic
+          -- boost for Yelp review counts so well-reviewed shops give extra points.
           LEAST(100, (
             user_rating_avg * 20 +
-            0 * 20 +
-            0 * 30 +
+            -- Yelp star rating contributes similarly to user avg (scale 0-5 -> 0-100 via *20)
+            yelp_rating * 20 +
+            -- Yelp review count provides confidence. Use ln(count+1)*10 capped at 30.
+            LEAST(30, CASE WHEN yelp_review_count > 0 THEN LN(yelp_review_count + 1) * 10 ELSE 0 END) +
             would_return_pct / 5 +
             10
           )) as trust_score

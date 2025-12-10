@@ -1,4 +1,15 @@
-require('dotenv').config();
+// Load environment variables. Default to loading `api/.env`,
+// but if key vars are missing (e.g. running from repo root),
+// also attempt to load the repository root `.env` for convenience.
+const path = require('path');
+const dotenv = require('dotenv');
+// First load local api/.env (if present)
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+// If critical variables are not present, try the repo root .env
+if (!process.env.YELP_API_KEY || !process.env.DATABASE_URL) {
+  const rootEnv = path.resolve(__dirname, '..', '.env');
+  dotenv.config({ path: rootEnv });
+}
 const { spawn } = require('child_process');
 const { pool } = require('./db');
 

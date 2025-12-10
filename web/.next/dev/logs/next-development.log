@@ -1,6 +1,8 @@
-[00:00:02.397] Server  LOG      ✓ Ready in 1555ms
-[00:07:20.613] Server  LOG      ✓ Compiled in 146ms
-[00:52:59.797] Server  LOG      ✓ Compiled in 183ms
-[00:53:22.050] Server  LOG      ✓ Compiled in 61ms
-[00:55:52.336] Server  LOG      ✓ Compiled in 210ms
-[00:56:03.212] Server  LOG      ✓ Compiled in 78ms
+[00:00:02.199] Server  LOG      ✓ Ready in 1530ms
+[00:00:17.312] Server  ERROR   (node:91252) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[00:02:12.447] Server  LOG      ✓ Compiled in 104ms
+[00:34:36.912] Server  ERROR   Failed to proxy http://localhost:3000/api/geocode?lat=33.90735860367051&lon=-117.16158912496277 Error: socket hang up
+[00:34:36.913] Server  ERROR   Error: socket hang up
+[00:40:14.903] Server  ERROR   Failed to proxy http://localhost:3000/api/geocode?lat=33.90736667774908&lon=-117.16158209628445 Error: socket hang up
+[00:40:14.904] Server  ERROR   Error: socket hang up

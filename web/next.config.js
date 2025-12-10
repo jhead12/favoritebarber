@@ -17,6 +17,17 @@ const nextConfig = {
   experimental: {
     allowedDevOrigins: [...new Set([...defaultOrigins, ...envOrigins])],
   },
+  // During local development, proxy `/api/*` requests to the backend server
+  // so client-side code can call `/api/...` without CORS/host issues.
+  async rewrites() {
+    const apiHost = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${apiHost}/api/:path*`,
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

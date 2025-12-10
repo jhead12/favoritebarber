@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Volumes/PRO-BLADE/Github/RateYourBarber/web/pages/admin/data-status.tsx"],"sourcesContent":["import React from 'react';\nimport dynamic from 'next/dynamic';\nconst DataStatusChart = dynamic(() => import('../../components/DataStatusChart'), { ssr: false });\n\nexport default function DataStatusPage() {\n  return (\n    <main style={{ padding: 24 }}>\n      <h1>Data Status Dashboard</h1>\n      <DataStatusChart />\n    </main>\n  );\n}\n"],"names":[],"mappings":";;;;;AACA;;;;AACA,MAAM,kBAAkB,IAAA,0IAAO,EAAC;;;;;;IAAoD,KAAK;;AAE1E,SAAS;IACtB,qBACE,qKAAC;QAAK,OAAO;YAAE,SAAS;QAAG;;0BACzB,qKAAC;0BAAG;;;;;;0BACJ,qKAAC;;;;;;;;;;;AAGP"}}]
+}

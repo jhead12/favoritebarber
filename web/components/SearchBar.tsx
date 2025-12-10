@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 type Props = {
   onSearch?: (query: string, location: string, coords?: { latitude: number; longitude: number } | null) => void;
@@ -9,6 +9,31 @@ export default function SearchBar({ onSearch }: Props) {
   const [location, setLocation] = useState('San Francisco, CA');
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [usingLocation, setUsingLocation] = useState(false);
+
+  useEffect(() => {
+    // Prefill from cached location if available
+    let mounted = true;
+    (async () => {
+      try {
+        const { getCachedLocation, reverseGeocode } = await import('../lib/location');
+        const cached = getCachedLocation();
+        if (cached && mounted) {
+          setCoords(cached);
+          // Try to reverse-geocode to friendly label
+          try {
+            const label = await reverseGeocode(cached.latitude, cached.longitude);
+            if (label) setLocation(label);
+            else setLocation(`${cached.latitude.toFixed(5)},${cached.longitude.toFixed(5)}`);
+          } catch (e) {
+            setLocation(`${cached.latitude.toFixed(5)},${cached.longitude.toFixed(5)}`);
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -5,6 +5,9 @@ self.__BUILD_MANIFEST = {
   "/_error": [
     "static/chunks/pages/_error.js"
   ],
+  "/admin/data-status": [
+    "static/chunks/pages/admin/data-status.js"
+  ],
   "/barber/[id]": [
     "static/chunks/pages/barber/[id].js"
   ],
@@ -12,7 +15,11 @@ self.__BUILD_MANIFEST = {
     "static/chunks/pages/shop/[id].js"
   ],
   "__rewrites": {
-    "afterFiles": [],
+    "afterFiles": [
+      {
+        "source": "/api/:path*"
+      }
+    ],
     "beforeFiles": [],
     "fallback": []
   },
@@ -20,6 +27,7 @@ self.__BUILD_MANIFEST = {
     "/",
     "/_app",
     "/_error",
+    "/admin/data-status",
     "/barber/[id]",
     "/barber/[id]/photos",
     "/barbers/[id]",

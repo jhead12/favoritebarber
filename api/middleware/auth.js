@@ -69,10 +69,59 @@ function requireAuth(req, res, next) {
   next();
 }
 
+/**
+ * Require admin: allow if the requester userId is listed in ADMIN_USER_IDS env var (comma-separated)
+ * or if an admin API key header matches ADMIN_API_KEY.
+ * Must be used after requireAuth so `req.user.userId` is available.
+ */
+function requireAdmin(req, res, next) {
+  const adminApiKey = process.env.ADMIN_API_KEY || null;
+  const providedKey = req.headers['x-admin-api-key'] || null;
+
+  if (adminApiKey && providedKey && providedKey === adminApiKey) {
+    return next();
+  }
+
+  const list = (process.env.ADMIN_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (req.user && req.user.userId && list.includes(req.user.userId)) {
+    return next();
+  }
+
+  return res.status(403).json({ success: false, error: 'admin_required' });
+}
+
+/**
+ * Require admin or valid admin API key. Allows admin API key to be used without a JWT.
+ * If `x-admin-api-key` header matches `ADMIN_API_KEY`, the request is allowed.
+ * Otherwise falls back to JWT + ADMIN_USER_IDS check via `requireAuth`.
+ */
+function requireAdminOrAuth(req, res, next) {
+  const adminApiKey = process.env.ADMIN_API_KEY || null;
+  const providedKey = req.headers['x-admin-api-key'] || null;
+
+  if (adminApiKey && providedKey && providedKey === adminApiKey) {
+    // mark a synthetic user to indicate admin API key was used
+    req.user = req.user || {};
+    req.user.isAdminApiKey = true;
+    return next();
+  }
+
+  // fallback: require JWT auth then admin user id check
+  return requireAuth(req, res, () => {
+    const list = (process.env.ADMIN_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (req.user && req.user.userId && list.includes(req.user.userId)) {
+      return next();
+    }
+    return res.status(403).json({ success: false, error: 'admin_required' });
+  });
+}
+
 module.exports = {
   hashPassword,
   comparePasswords,
   generateToken,
   verifyToken,
   requireAuth,
+  requireAdmin,
+  requireAdminOrAuth,
 };

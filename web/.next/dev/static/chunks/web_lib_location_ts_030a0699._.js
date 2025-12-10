@@ -8,7 +8,9 @@ __turbopack_context__.s([
     "getCachedLocation",
     ()=>getCachedLocation,
     "requestLocation",
-    ()=>requestLocation
+    ()=>requestLocation,
+    "reverseGeocode",
+    ()=>reverseGeocode
 ]);
 const KEY = 'ryb:lastLocation';
 function cacheLocation(c) {
@@ -50,6 +52,25 @@ function requestLocation(timeout = 10000) {
         });
     // no cleanup required here; caller may ignore
     });
+}
+async function reverseGeocode(lat, lon) {
+    // Prefer server-side geocoding via `/api/geocode` so the Google API key can remain secret.
+    try {
+        if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
+        ;
+        const base = '';
+        const url = new URL(`/api/geocode?lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lon))}`, window.location.origin || base || window.location.href);
+        const res = await fetch(url.toString(), {
+            headers: {
+                Accept: 'application/json'
+            }
+        });
+        if (!res.ok) return null;
+        const j = await res.json();
+        return j && j.address ? j.address : null;
+    } catch (e) {
+        return null;
+    }
 }
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);

@@ -475,10 +475,19 @@ function mapApiBarberToUi(b) {
     // DB-backed barber
     if (b && (b.trust_score || b.thumbnail_url || b.distance_m !== undefined)) {
         const trustVal = b.trust_score ? typeof b.trust_score.value === 'number' ? b.trust_score.value : Number(b.trust_score.value) : 0;
+        // Normalize shop field: it may be an object (shop row) or a string
+        let shopStr = '';
+        if (b.primary_location && b.primary_location.formatted_address) shopStr = b.primary_location.formatted_address;
+        else if (b.shop) {
+            if (typeof b.shop === 'string') shopStr = b.shop;
+            else if (typeof b.shop === 'object') shopStr = b.shop.name || b.shop.formatted_address || JSON.stringify({
+                id: b.shop.id
+            }).replace(/[{}\"]+/g, '') || '';
+        }
         return {
             id: b.id,
             name: b.name || '',
-            shop: b.primary_location && b.primary_location.formatted_address || b.shop || '',
+            shop: shopStr,
             distance: b.distance_m ? `${(b.distance_m / 1609).toFixed(1)} mi` : b.distance || '',
             trust: Number.isFinite(trustVal) ? trustVal : 0,
             specialties: b.top_tags || b.specialties || [],
@@ -550,10 +559,11 @@ if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelper
 "use strict";
 
 __turbopack_context__.s([
+    "__N_SSP",
+    ()=>__N_SSP,
     "default",
     ()=>BarberProfilePage
 ]);
-var __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$next$2f$dist$2f$build$2f$polyfills$2f$process$2e$js__$5b$client$5d$__$28$ecmascript$29$__ = /*#__PURE__*/ __turbopack_context__.i("[project]/web/node_modules/next/dist/build/polyfills/process.js [client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/web/node_modules/react/jsx-dev-runtime.js [client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/web/node_modules/react/index.js [client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$next$2f$router$2e$js__$5b$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/web/node_modules/next/router.js [client] (ecmascript)");
@@ -565,85 +575,33 @@ var _s = __turbopack_context__.k.signature();
 ;
 ;
 ;
-function BarberProfilePage() {
+var __N_SSP = true;
+function BarberProfilePage({ barberRaw }) {
     _s();
     const router = (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$next$2f$router$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useRouter"])();
-    const { id } = router.query;
-    const [barberRaw, setBarberRaw] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useState"])(null);
-    const [barber, setBarber] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useState"])(null);
-    const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useState"])(true);
-    const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const barber = barberRaw ? (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$lib$2f$adapters$2e$ts__$5b$client$5d$__$28$ecmascript$29$__["mapApiBarberToUi"])(barberRaw) : null;
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "BarberProfilePage.useEffect": ()=>{
-            if (!id) return;
-            async function load() {
-                setLoading(true);
-                setError(null);
-                try {
-                    const apiBase = ("TURBOPACK compile-time value", "http://localhost:3000") || '';
-                    const res = await fetch(`${apiBase}/api/search?term=barber&location=`);
-                    if (!res.ok) throw new Error(`search failed: ${res.status}`);
-                    const items = await res.json();
-                    const found = items.find({
-                        "BarberProfilePage.useEffect.load.found": (b)=>String(b.id) === String(id)
-                    }["BarberProfilePage.useEffect.load.found"]);
-                    if (!found) {
-                        setError('Barber not found');
-                        setBarberRaw(null);
-                        setBarber(null);
-                    } else {
-                        setBarberRaw(found);
-                        setBarber((0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$lib$2f$adapters$2e$ts__$5b$client$5d$__$28$ecmascript$29$__["mapApiBarberToUi"])(found));
-                        // Persist last-visited barber for quick access across the app
-                        try {
-                            (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$lib$2f$lastVisited$2e$ts__$5b$client$5d$__$28$ecmascript$29$__["setLastVisitedBarber"])({
-                                id: found.id,
-                                name: found.name || '',
-                                shop: found.primary_location && (found.primary_location.name || found.primary_location.formatted_address) || found.shop || '',
-                                timestamp: Date.now()
-                            });
-                        } catch (e) {
-                        // ignore
-                        }
-                    }
-                } catch (err) {
-                    setError(err.message || String(err));
-                    setBarberRaw(null);
-                    setBarber(null);
-                } finally{
-                    setLoading(false);
-                }
-            }
-            load();
+            if (!barberRaw) return;
+            try {
+                (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$lib$2f$lastVisited$2e$ts__$5b$client$5d$__$28$ecmascript$29$__["setLastVisitedBarber"])({
+                    id: barberRaw.id,
+                    name: barberRaw.name || '',
+                    shop: barberRaw.primary_location && (barberRaw.primary_location.name || barberRaw.primary_location.formatted_address) || barberRaw.shop && barberRaw.shop.name || '',
+                    timestamp: Date.now()
+                });
+            } catch (e) {}
         }
     }["BarberProfilePage.useEffect"], [
-        id
+        barberRaw
     ]);
-    if (loading) return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-        children: "Loading profile..."
-    }, void 0, false, {
-        fileName: "[project]/web/pages/barber/[id].tsx",
-        lineNumber: 55,
-        columnNumber: 23
-    }, this);
-    if (error) return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-        children: [
-            "Error: ",
-            error
-        ]
-    }, void 0, true, {
-        fileName: "[project]/web/pages/barber/[id].tsx",
-        lineNumber: 56,
-        columnNumber: 21
-    }, this);
     if (!barberRaw || !barber) return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         children: "No barber found"
     }, void 0, false, {
         fileName: "[project]/web/pages/barber/[id].tsx",
-        lineNumber: 57,
+        lineNumber: 26,
         columnNumber: 37
     }, this);
-    // Determine verification status using a few possible API field names
     const barberVerified = barberRaw.verified === true || barberRaw.is_verified === true || !!barberRaw.verified_at || barberRaw.status === 'verified';
     const shop = barberRaw.primary_location || barberRaw.shop || null;
     const shopVerified = !!shop && (shop.verified === true || shop.is_verified === true || !!shop.verified_at || shop.status === 'verified');
@@ -668,19 +626,19 @@ function BarberProfilePage() {
                     children: "← Back"
                 }, void 0, false, {
                     fileName: "[project]/web/pages/barber/[id].tsx",
-                    lineNumber: 73,
+                    lineNumber: 41,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/web/pages/barber/[id].tsx",
-                lineNumber: 72,
+                lineNumber: 40,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
                 children: barber.name
             }, void 0, false, {
                 fileName: "[project]/web/pages/barber/[id].tsx",
-                lineNumber: 77,
+                lineNumber: 45,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -701,7 +659,7 @@ function BarberProfilePage() {
                         }
                     }, void 0, false, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 79,
+                        lineNumber: 47,
                         columnNumber: 25
                     }, this) : null,
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -715,7 +673,7 @@ function BarberProfilePage() {
                                         children: "Shop:"
                                     }, void 0, false, {
                                         fileName: "[project]/web/pages/barber/[id].tsx",
-                                        lineNumber: 81,
+                                        lineNumber: 49,
                                         columnNumber: 36
                                     }, this),
                                     " ",
@@ -723,7 +681,7 @@ function BarberProfilePage() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/web/pages/barber/[id].tsx",
-                                lineNumber: 81,
+                                lineNumber: 49,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -735,7 +693,7 @@ function BarberProfilePage() {
                                         children: "Distance:"
                                     }, void 0, false, {
                                         fileName: "[project]/web/pages/barber/[id].tsx",
-                                        lineNumber: 82,
+                                        lineNumber: 50,
                                         columnNumber: 36
                                     }, this),
                                     " ",
@@ -743,7 +701,7 @@ function BarberProfilePage() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/web/pages/barber/[id].tsx",
-                                lineNumber: 82,
+                                lineNumber: 50,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -755,7 +713,7 @@ function BarberProfilePage() {
                                         children: "Trust:"
                                     }, void 0, false, {
                                         fileName: "[project]/web/pages/barber/[id].tsx",
-                                        lineNumber: 83,
+                                        lineNumber: 51,
                                         columnNumber: 36
                                     }, this),
                                     " ",
@@ -763,19 +721,19 @@ function BarberProfilePage() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/web/pages/barber/[id].tsx",
-                                lineNumber: 83,
+                                lineNumber: 51,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 80,
+                        lineNumber: 48,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/web/pages/barber/[id].tsx",
-                lineNumber: 78,
+                lineNumber: 46,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -787,7 +745,7 @@ function BarberProfilePage() {
                         children: "Verification"
                     }, void 0, false, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 88,
+                        lineNumber: 56,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -796,7 +754,7 @@ function BarberProfilePage() {
                                 children: "Barber verified:"
                             }, void 0, false, {
                                 fileName: "[project]/web/pages/barber/[id].tsx",
-                                lineNumber: 90,
+                                lineNumber: 58,
                                 columnNumber: 11
                             }, this),
                             " ",
@@ -806,7 +764,7 @@ function BarberProfilePage() {
                                 children: "Shop verified:"
                             }, void 0, false, {
                                 fileName: "[project]/web/pages/barber/[id].tsx",
-                                lineNumber: 92,
+                                lineNumber: 60,
                                 columnNumber: 11
                             }, this),
                             " ",
@@ -814,7 +772,7 @@ function BarberProfilePage() {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 89,
+                        lineNumber: 57,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -823,7 +781,7 @@ function BarberProfilePage() {
                                 children: "Business profile:"
                             }, void 0, false, {
                                 fileName: "[project]/web/pages/barber/[id].tsx",
-                                lineNumber: 95,
+                                lineNumber: 63,
                                 columnNumber: 11
                             }, this),
                             " ",
@@ -831,13 +789,13 @@ function BarberProfilePage() {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 94,
+                        lineNumber: 62,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/web/pages/barber/[id].tsx",
-                lineNumber: 87,
+                lineNumber: 55,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -849,7 +807,7 @@ function BarberProfilePage() {
                         children: "Credits"
                     }, void 0, false, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 100,
+                        lineNumber: 68,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -858,7 +816,7 @@ function BarberProfilePage() {
                                 children: "Barber credits:"
                             }, void 0, false, {
                                 fileName: "[project]/web/pages/barber/[id].tsx",
-                                lineNumber: 101,
+                                lineNumber: 69,
                                 columnNumber: 12
                             }, this),
                             " ",
@@ -866,7 +824,7 @@ function BarberProfilePage() {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 101,
+                        lineNumber: 69,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -875,7 +833,7 @@ function BarberProfilePage() {
                                 children: "Shop credits:"
                             }, void 0, false, {
                                 fileName: "[project]/web/pages/barber/[id].tsx",
-                                lineNumber: 102,
+                                lineNumber: 70,
                                 columnNumber: 12
                             }, this),
                             " ",
@@ -883,7 +841,7 @@ function BarberProfilePage() {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 102,
+                        lineNumber: 70,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -892,7 +850,7 @@ function BarberProfilePage() {
                                 children: "Combined credits:"
                             }, void 0, false, {
                                 fileName: "[project]/web/pages/barber/[id].tsx",
-                                lineNumber: 103,
+                                lineNumber: 71,
                                 columnNumber: 12
                             }, this),
                             " ",
@@ -900,7 +858,7 @@ function BarberProfilePage() {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 103,
+                        lineNumber: 71,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -910,14 +868,102 @@ function BarberProfilePage() {
                         children: "If both the barber and the shop are verified, the barber can earn credits from both pages."
                     }, void 0, false, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 104,
+                        lineNumber: 72,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/web/pages/barber/[id].tsx",
-                lineNumber: 99,
+                lineNumber: 67,
                 columnNumber: 7
+            }, this),
+            barberRaw.reviews && barberRaw.reviews.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
+                style: {
+                    marginTop: 18
+                },
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                        children: "Recent comments"
+                    }, void 0, false, {
+                        fileName: "[project]/web/pages/barber/[id].tsx",
+                        lineNumber: 77,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        children: barberRaw.reviews.map((r)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                style: {
+                                    padding: '10px 0',
+                                    borderBottom: '1px solid #eee'
+                                },
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        style: {
+                                            margin: 0
+                                        },
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                                children: r.sanitized ? 'Summary' : 'Comment'
+                                            }, void 0, false, {
+                                                fileName: "[project]/web/pages/barber/[id].tsx",
+                                                lineNumber: 82,
+                                                columnNumber: 19
+                                            }, this),
+                                            r.rating ? ` — ${r.rating}/5` : '',
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                style: {
+                                                    color: '#666',
+                                                    marginLeft: 8
+                                                },
+                                                children: r.created_at ? new Date(r.created_at).toLocaleDateString() : ''
+                                            }, void 0, false, {
+                                                fileName: "[project]/web/pages/barber/[id].tsx",
+                                                lineNumber: 84,
+                                                columnNumber: 19
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/web/pages/barber/[id].tsx",
+                                        lineNumber: 81,
+                                        columnNumber: 17
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        style: {
+                                            margin: '6px 0 0'
+                                        },
+                                        children: r.summary || 'No text available'
+                                    }, void 0, false, {
+                                        fileName: "[project]/web/pages/barber/[id].tsx",
+                                        lineNumber: 86,
+                                        columnNumber: 17
+                                    }, this),
+                                    r.sanitized && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        style: {
+                                            fontSize: 12,
+                                            color: '#666',
+                                            margin: '6px 0 0'
+                                        },
+                                        children: "Sanitized summary (LLM)"
+                                    }, void 0, false, {
+                                        fileName: "[project]/web/pages/barber/[id].tsx",
+                                        lineNumber: 87,
+                                        columnNumber: 33
+                                    }, this)
+                                ]
+                            }, r.id, true, {
+                                fileName: "[project]/web/pages/barber/[id].tsx",
+                                lineNumber: 80,
+                                columnNumber: 15
+                            }, this))
+                    }, void 0, false, {
+                        fileName: "[project]/web/pages/barber/[id].tsx",
+                        lineNumber: 78,
+                        columnNumber: 11
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/web/pages/barber/[id].tsx",
+                lineNumber: 76,
+                columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
                 style: {
@@ -928,7 +974,7 @@ function BarberProfilePage() {
                         children: "Actions"
                     }, void 0, false, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 108,
+                        lineNumber: 95,
                         columnNumber: 9
                     }, this),
                     !hasBusinessProfile && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -939,7 +985,7 @@ function BarberProfilePage() {
                         children: "Claim Business Profile"
                     }, void 0, false, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 110,
+                        lineNumber: 97,
                         columnNumber: 11
                     }, this),
                     hasBusinessProfile && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -950,13 +996,13 @@ function BarberProfilePage() {
                         children: "Manage Business Profile"
                     }, void 0, false, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 115,
+                        lineNumber: 102,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/web/pages/barber/[id].tsx",
-                lineNumber: 107,
+                lineNumber: 94,
                 columnNumber: 7
             }, this),
             shop && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -968,7 +1014,7 @@ function BarberProfilePage() {
                         children: "Shop"
                     }, void 0, false, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 123,
+                        lineNumber: 110,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -977,7 +1023,7 @@ function BarberProfilePage() {
                                 children: "Name:"
                             }, void 0, false, {
                                 fileName: "[project]/web/pages/barber/[id].tsx",
-                                lineNumber: 124,
+                                lineNumber: 111,
                                 columnNumber: 14
                             }, this),
                             " ",
@@ -985,7 +1031,7 @@ function BarberProfilePage() {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 124,
+                        lineNumber: 111,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -994,7 +1040,7 @@ function BarberProfilePage() {
                                 children: "Verified:"
                             }, void 0, false, {
                                 fileName: "[project]/web/pages/barber/[id].tsx",
-                                lineNumber: 125,
+                                lineNumber: 112,
                                 columnNumber: 14
                             }, this),
                             " ",
@@ -1002,7 +1048,7 @@ function BarberProfilePage() {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 125,
+                        lineNumber: 112,
                         columnNumber: 11
                     }, this),
                     shop.id ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1011,28 +1057,28 @@ function BarberProfilePage() {
                             children: "Open shop page"
                         }, void 0, false, {
                             fileName: "[project]/web/pages/barber/[id].tsx",
-                            lineNumber: 127,
+                            lineNumber: 114,
                             columnNumber: 16
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/web/pages/barber/[id].tsx",
-                        lineNumber: 127,
+                        lineNumber: 114,
                         columnNumber: 13
                     }, this) : null
                 ]
             }, void 0, true, {
                 fileName: "[project]/web/pages/barber/[id].tsx",
-                lineNumber: 122,
+                lineNumber: 109,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/web/pages/barber/[id].tsx",
-        lineNumber: 71,
+        lineNumber: 39,
         columnNumber: 5
     }, this);
 }
-_s(BarberProfilePage, "uHgYsk2KD0dfhHtsj9hWq9LjakY=", false, function() {
+_s(BarberProfilePage, "vQduR7x+OPXj6PSmJyFnf+hU7bg=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$web$2f$node_modules$2f$next$2f$router$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useRouter"]
     ];

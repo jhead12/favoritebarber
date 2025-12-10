@@ -3,6 +3,7 @@
   "/_app": "pages/_app.js",
   "/_document": "pages/_document.js",
   "/_error": "pages/_error.js",
+  "/admin/data-status": "pages/admin/data-status.js",
   "/barber/[id]": "pages/barber/[id].js",
   "/shop/[id]": "pages/shop/[id].js"
 }
