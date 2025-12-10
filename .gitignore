@@ -20,3 +20,6 @@ coverage
 /.parcel-cache
 /.turbo
 /.pnp
+node_modules/
+web/node_modules/
+web/node_modules/
