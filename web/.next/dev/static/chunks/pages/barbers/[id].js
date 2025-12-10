@@ -1,0 +1,11 @@
+__turbopack_load_page_chunks__("/barbers/[id]", [
+  "static/chunks/2374f_next_dist_compiled_b0e91b0f._.js",
+  "static/chunks/2374f_next_dist_shared_lib_f816a94d._.js",
+  "static/chunks/2374f_next_dist_client_4d3f1e10._.js",
+  "static/chunks/2374f_next_dist_94a4a07f._.js",
+  "static/chunks/2374f_react-dom_d61e6ed4._.js",
+  "static/chunks/2374f_a6c338b2._.js",
+  "static/chunks/[root-of-the-server]__d5902bce._.js",
+  "static/chunks/web_pages_barbers_[id]_tsx_2da965e7._.js",
+  "static/chunks/turbopack-web_pages_barbers_[id]_tsx_1fd4dfa7._.js"
+])

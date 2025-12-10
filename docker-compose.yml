@@ -1,0 +1,81 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: rateyourbarber
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+
+  redis:
+    image: redis:7
+    ports:
+      - 6379:6379
+
+  api:
+    build: ./api
+    command: npm run dev
+    environment:
+      DATABASE_URL: "postgresql://postgres:password@postgres:5432/rateyourbarber"
+      REDIS_URL: "redis://redis:6379"
+    ports:
+      - 3000:3000
+    depends_on:
+      - postgres
+      - redis
+
+  web:
+    build: ./web
+    command: npm run dev
+    ports:
+      - 3001:3000
+    depends_on:
+      - api
+
+  worker:
+    build: ./workers
+    command: npm run dev
+    environment:
+      DATABASE_URL: "postgresql://postgres:password@postgres:5432/rateyourbarber"
+      REDIS_URL: "redis://redis:6379"
+    depends_on:
+      - postgres
+      - redis
+
+  # Local Ollama for Llama LLM (optional)
+  # To enable, uncomment this block and run: ollama serve
+  # Or use: podman-compose up ollama
+  #ollama:
+  #  image: ollama/ollama:latest
+  #  ports:
+  #    - "11434:11434"
+  #  volumes:
+  #    - ollama-data:/root/.ollama
+  #  environment:
+  #    - OLLAMA_MODELS=/root/.ollama/models
+
+# ML worker (optional)
+# To enable the ML worker, remove the leading '#' characters on this block
+# and ensure `ml-worker/` exists with a Dockerfile or change `image:` to your registry image.
+#ml-worker:
+#  build: ./ml-worker
+#  command: python app.py
+#  volumes:
+#    - ./ml-worker:/usr/src/app
+#  environment:
+#    - MODEL_PATH=/models
+#    - REDIS_URL=${REDIS_URL}
+#    - DATABASE_URL=${DATABASE_URL}
+#  ports:
+#    - 5000:5000
+#  depends_on:
+#    - redis
+#    - postgres
+
+volumes:
+  pgdata:
+  ollama-data:
