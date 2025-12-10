@@ -72,6 +72,25 @@ export default function BarberProfilePage({ barberRaw }: Props): JSX.Element {
         <p style={{ color: '#555' }}>If both the barber and the shop are verified, the barber can earn credits from both pages.</p>
       </section>
 
+      {barberRaw.reviews && barberRaw.reviews.length > 0 && (
+        <section style={{ marginTop: 18 }}>
+          <h2>Recent comments</h2>
+          <div>
+            {barberRaw.reviews.map((r: any) => (
+              <div key={r.id} style={{ padding: '10px 0', borderBottom: '1px solid #eee' }}>
+                <p style={{ margin: 0 }}>
+                  <strong>{r.sanitized ? 'Summary' : 'Comment'}</strong>
+                  {r.rating ? ` — ${r.rating}/5` : ''}
+                  <span style={{ color: '#666', marginLeft: 8 }}>{r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}</span>
+                </p>
+                <p style={{ margin: '6px 0 0' }}>{r.summary || 'No text available'}</p>
+                {r.sanitized && <p style={{ fontSize: 12, color: '#666', margin: '6px 0 0' }}>Sanitized summary (LLM)</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section style={{ marginTop: 18 }}>
         <h2>Actions</h2>
         {!hasBusinessProfile && (

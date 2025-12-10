@@ -29,3 +29,21 @@ export function requestLocation(timeout = 10000): Promise<Coords> {
     // no cleanup required here; caller may ignore
   });
 }
+
+// Optional reverse geocode via OpenStreetMap Nominatim (client-side)
+export async function reverseGeocode(lat: number, lon: number): Promise<string | null> {
+  // Prefer server-side geocoding via `/api/geocode` so the Google API key can remain secret.
+  try {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    const base = '';
+    const url = new URL(`/api/geocode?lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lon))}`, window.location.origin || base || window.location.href);
+    const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
+    if (!res.ok) return null;
+    const j = await res.json();
+    return j && j.address ? j.address : null;
+  } catch (e) {
+    return null;
+  }
+}
