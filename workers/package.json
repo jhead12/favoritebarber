@@ -1,0 +1,14 @@
+{
+  "name": "ryb-workers",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node index.js",
+    "analyze": "node workers/image_processor.js --sample"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "pg": "^8.10.0",
+    "@google-cloud/vision": "^4.0.0"
+  }
+}
