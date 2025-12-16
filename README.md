@@ -72,9 +72,71 @@ For privacy-first text analysis (name extraction, sentiment, summarization), thi
    - `workers/llm/review_parser.js` — Wrapper for batch review parsing
    - Review enrichment: The Yelp fetcher can call `parseReview()` to extract sentiment, names, and summaries from reviews without sending data to external APIs.
 
+    ### Todo
+    - Set up other LLM Providers
+    - Atropic
+    - MCP servers
+       - Define MCP roadmap for both internal tools and external partners
+       - Complete Yelp GraphQL Phases 1–4 (audit, use-case split, prototype client, worker updates) before full MCP rollout
+       - Clarify partner onboarding, auth scopes, and rate-limiting ownership (MCP enforces partner quotas; workers remain independent)
+       - Link to `docs/MCP_DESIGN.md` for detailed design and next steps
+
+
 If Ollama is not running, all LLM functions degrade to local heuristics (regex NER, keyword sentiment, truncation) automatically. No data is ever sent outside your machine.
 
 2. Implement crawler logic in `workers/crawlers/yelp_fetcher.ts` and run workers.
 3. Implement API endpoints and wire database connection.
+
+
+
+## Yelp GraphQL TODOs
+
+This section tracks the phased plan to add Yelp GraphQL support and a hybrid GraphQL/REST strategy. Update the "Status" and remove or replace the "Begin marker" when work on each phase starts.
+
+- **Phase 1 — Audit current Yelp usage**
+   - **Goal**: Find all existing Yelp REST calls in the repo and document which fields are requested and why (files, endpoints, and purpose).
+   - **Status**: not-started
+   - **Begin marker**: BEGIN-PHASE-1
+
+- **Phase 2 — Define GraphQL vs REST use cases**
+   - **Goal**: Map required data fields to GraphQL queries or REST endpoints; decide which workflows need GraphQL.
+   - **Status**: not-started
+   - **Begin marker**: BEGIN-PHASE-2
+
+- **Phase 3 — Prototype GraphQL client**
+   - **Goal**: Add a lightweight GraphQL client module (e.g., `api/yelp_graphql.js`) with auth and a sample `Business` query; validate against 5 sample businesses.
+   - **Status**: in-progress
+   - **Begin marker**: BEGIN-PHASE-3 (in-progress)
+
+- **Phase 4 — Update ingestion workers**
+   - **Goal**: Modify ingestion workers to use GraphQL for enrichment (details, photos, hours) and fall back to REST for bulk lists; add a feature-flag toggle.
+   - **Status**: not-started
+   - **Begin marker**: BEGIN-PHASE-4
+
+- **Phase 5 — Implement rate-limiting & caching**
+   - **Goal**: Add a request queue/token-bucket and Redis-backed caching to respect GraphQL endpoint-capture limits and REST quotas; add retries/backoff.
+   - **Status**: not-started
+   - **Begin marker**: BEGIN-PHASE-5
+
+- **Phase 6 — DB changes & migrations**
+   - **Goal**: Add DB schema changes to store GraphQL-provided fields and image attributions; create migration SQL in `api/migrations/`.
+   - **Status**: not-started
+   - **Begin marker**: BEGIN-PHASE-6
+
+- **Phase 7 — Testing & validation**
+   - **Goal**: Add unit tests for the GraphQL client, integration tests for ingestion with recorded responses, and a quota-simulation test.
+   - **Status**: not-started
+   - **Begin marker**: BEGIN-PHASE-7
+
+- **Phase 8 — Deploy to staging & monitor**
+   - **Goal**: Deploy to staging, monitor usage and errors, and run verification before production rollout.
+   - **Status**: not-started
+   - **Begin marker**: BEGIN-PHASE-8
+
+---
+
+Notes:
+- Use GraphQL selectively for high-value enrichment (photos, hours, categories); use REST for high-volume discovery and polling.
+- Track GraphQL endpoint-capture and REST request quotas in telemetry and alert at 70%/90% thresholds.
 
 
