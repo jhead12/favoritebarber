@@ -252,3 +252,12 @@ curl http://localhost:3000/api/users/{barberId}/user-reviews
 6. **No Pagination**: Review endpoints support limit/offset but frontend not yet implemented
 7. **Foreign Key Relationship**: barbers connected to shops via `shop_barbers` join table (not direct shop_id)
 
+---
+
+## MCP Roadmap Decision
+
+- **Prerequisite sequencing:** Complete Yelp GraphQL Phases 1–4 (audit, define GraphQL vs REST use-cases, prototype GraphQL client, update ingestion workers) before implementing the full MCP server. This ensures MCP exposes consistent, normalized data to both internal tools and external partners.
+- **Rate-limit & telemetry ownership:** MCP will enforce partner-facing quotas and rate-limits only. Workers will remain independent for their ingestion traffic and internal telemetry; there is no shared Redis/OpenTelemetry infra between MCP and workers.
+- **Design doc:** See `docs/MCP_DESIGN.md` for the MCP design overview, data-surface mapping (raw Yelp vs Postgres-enriched), auth scopes, and next technical tasks.
+
+
