@@ -22,6 +22,8 @@ services:
     environment:
       DATABASE_URL: "postgresql://postgres:password@postgres:5432/rateyourbarber"
       REDIS_URL: "redis://redis:6379"
+    env_file:
+      - ./.env
     ports:
       - 3000:3000
     depends_on:
@@ -31,6 +33,15 @@ services:
   web:
     build: ./web
     command: npm run dev
+    environment:
+      # For client-side requests from the browser, use the host-mapped API address.
+      # Set to http://localhost:3000 so the browser can resolve it. If you run the API separately,
+      # update this to the host:port where the API is reachable from your browser.
+      # When running in compose, the web container should reach the API by service name for server-side code,
+      # while the browser needs a host-accessible URL. Set both variables: `API_INTERNAL_URL` for server
+      # rewrites and `NEXT_PUBLIC_API_URL` for client-side requests.
+      - API_INTERNAL_URL=http://api:3000
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
     ports:
       - 3001:3000
     depends_on:

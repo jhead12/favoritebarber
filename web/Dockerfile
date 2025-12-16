@@ -5,6 +5,9 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm ci --silent || npm install --silent
 
+# Install curl for debugging inside the container
+RUN apk add --no-cache curl
+
 COPY . .
 
 ENV NODE_ENV=development

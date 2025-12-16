@@ -38,11 +38,11 @@ export default function DataStatusChart({ endpoint = '/api/admin/data-status' }:
 
         const labels = ['<20', '20-39', '40-59', '60-79', '80+'];
         const values = [
-          data.distr.lt20 || 0,
-          data.distr.bt20_40 || 0,
-          data.distr.bt40_60 || 0,
-          data.distr.bt60_80 || 0,
-          data.distr.gte80 || 0,
+          Number(data?.distr?.lt20 || 0),
+          Number(data?.distr?.bt20_40 || 0),
+          Number(data?.distr?.bt40_60 || 0),
+          Number(data?.distr?.bt60_80 || 0),
+          Number(data?.distr?.gte80 || 0),
         ];
 
         chartRef.current = new Chart(ctx, {
@@ -62,14 +62,17 @@ export default function DataStatusChart({ endpoint = '/api/admin/data-status' }:
 
   if (!data) return <div>Loading dashboard…</div>;
 
-  const totalBarbers = Number(data.counts.barbers_count || 0);
+  const totalBarbers = Number(data?.counts?.barbers_count || 0);
   const values = [
-    Number(data.distr.lt20 || 0),
-    Number(data.distr.bt20_40 || 0),
-    Number(data.distr.bt40_60 || 0),
-    Number(data.distr.bt60_80 || 0),
-    Number(data.distr.gte80 || 0),
+    Number(data?.distr?.lt20 || 0),
+    Number(data?.distr?.bt20_40 || 0),
+    Number(data?.distr?.bt40_60 || 0),
+    Number(data?.distr?.bt60_80 || 0),
+    Number(data?.distr?.gte80 || 0),
   ];
+  if (totalBarbers === 0 && values.reduce((s, v) => s + v, 0) === 0) {
+    return <div style={{ padding: 20 }}>No data available yet — background workers will populate collections shortly.</div>;
+  }
 
   return (
     <div style={{ padding: 20 }}>

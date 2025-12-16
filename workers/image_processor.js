@@ -75,7 +75,11 @@ function heuristicAnalyze(url, source) {
 }
 
 async function persistAnalysis(imageId, rawAnalysis, relevance_score, authenticity_score, hairstyles = []) {
-  if (!pool) {
+  // If there's no DB pool available, or this is a sample run using
+  // non-integer IDs (e.g. 'img1'), treat it as a simulation and
+  // avoid performing any writes. This prevents type errors when
+  // sample data uses string IDs while the DB expects integer keys.
+  if (!pool || typeof imageId !== 'number') {
     console.log('(SIM) Persisting analysis for', imageId, 'relevance=', relevance_score, 'authenticity=', authenticity_score);
     console.log('(SIM) analysis:', JSON.stringify(rawAnalysis && (rawAnalysis.labels || rawAnalysis.objects || rawAnalysis), null, 2));
     console.log('(SIM) hairstyles:', JSON.stringify(hairstyles));

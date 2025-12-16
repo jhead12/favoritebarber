@@ -52,6 +52,22 @@ router.get('/:id', async (req, res) => {
       } : null
     };
 
+    // Attach a thumbnail image: prefer barber images, fallback to shop images
+    try {
+      const imgQ = await pool.query(
+        `SELECT url FROM images WHERE barber_id = $1 ORDER BY fetched_at DESC LIMIT 1`,
+        [barberInternalId]
+      );
+      if (imgQ.rowCount && imgQ.rows[0].url) {
+        out.thumbnail_url = imgQ.rows[0].url;
+      } else if (shop && shop.id) {
+        const sImgQ = await pool.query(`SELECT url FROM images WHERE shop_id = $1 ORDER BY fetched_at DESC LIMIT 1`, [shop.id]);
+        if (sImgQ.rowCount && sImgQ.rows[0].url) out.thumbnail_url = sImgQ.rows[0].url;
+      }
+    } catch (imgErr) {
+      console.error('barbers/:id image query error', imgErr);
+    }
+
     // Attach recent sanitized LLM-enriched comments (if available) from reviews.
     try {
       const revQ = await pool.query(
@@ -77,6 +93,28 @@ router.get('/:id', async (req, res) => {
     } catch (revErr) {
       console.error('barbers/:id reviews query error', revErr);
       out.reviews = [];
+    }
+
+    // Attach discovered social profiles (discovered by crawlers/playwright)
+    try {
+      const yelpId = b.yelp_business_id || null;
+      if (yelpId) {
+        const spQ = await pool.query(
+          `SELECT id, platform, handle, profile_url, name, confidence, evidence
+           FROM social_profiles
+           WHERE (evidence->> 'yelp_business') = $1
+              OR (evidence->'source_record'->> 'yelp_business') = $1
+           ORDER BY confidence DESC NULLS LAST
+           LIMIT 20`,
+          [String(yelpId)]
+        );
+        out.social_profiles = spQ.rowCount ? spQ.rows : [];
+      } else {
+        out.social_profiles = [];
+      }
+    } catch (spErr) {
+      console.error('barbers/:id social_profiles query error', spErr);
+      out.social_profiles = [];
     }
 
     res.json(out);

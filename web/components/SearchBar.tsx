@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getLastSearch, setLastSearch, LastSearch } from '../lib/lastSearch';
 
 type Props = {
   onSearch?: (query: string, location: string, coords?: { latitude: number; longitude: number } | null) => void;
@@ -15,6 +16,15 @@ export default function SearchBar({ onSearch }: Props) {
     let mounted = true;
     (async () => {
       try {
+        // Load last explicit search first (if any)
+        const last = getLastSearch();
+        if (last && mounted) {
+          setQuery(last.query || '');
+          setLocation(last.location || 'San Francisco, CA');
+          if (last.coords) setCoords(last.coords as { latitude: number; longitude: number });
+          return;
+        }
+
         const { getCachedLocation, reverseGeocode } = await import('../lib/location');
         const cached = getCachedLocation();
         if (cached && mounted) {
@@ -38,6 +48,12 @@ export default function SearchBar({ onSearch }: Props) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSearch?.(query, location, coords);
+    try {
+      const s: LastSearch = { query: query || '', location: location || '', coords: coords || null, timestamp: Date.now() };
+      setLastSearch(s);
+    } catch (e) {
+      // ignore storage errors
+    }
   };
 
   return (

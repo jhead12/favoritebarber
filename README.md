@@ -81,6 +81,24 @@ For privacy-first text analysis (name extraction, sentiment, summarization), thi
        - Clarify partner onboarding, auth scopes, and rate-limiting ownership (MCP enforces partner quotas; workers remain independent)
        - Link to `docs/MCP_DESIGN.md` for detailed design and next steps
 
+      ### LLM Provider Expansion TODO
+      - Goal: support a broad open-source LLM ecosystem while keeping Ollama for local/dev.
+      - Adapters to add (priority): `huggingface` (Inference API/TGI), `vllm`/`tgi` (self-hosted), `replicate`, `gpt4all`/`llama.cpp`, plus existing `openai`/`anthropic` adapters.
+      - Implementation notes:
+         - Add `workers/llm/llm_client.js` facade and `workers/llm/providers/*` adapters (one file per provider).
+         - Support env vars: `LLM_PROVIDER`, `LLM_PROVIDER_FALLBACK` (comma-separated), `LLM_TIMEOUT_MS`, `LLM_MAX_RETRIES`, and provider keys like `HF_API_KEY`, `REPLICATE_API_KEY`.
+         - Add a provider capability registry (streaming, embeddings, function-calling) to choose appropriate model calls.
+         - Persist enrichment metadata: add migration to store `enriched_provider` and `enriched_model` on `reviews`.
+         - Enforce license/commercial checks before enabling community models (document onboarding in `docs/`).
+      - Safety & ops:
+         - Add pre-send moderation/masking for PII, telemetry (latency, token counts, errors), and per-provider quotas with canary rollout.
+      - Files to create/edit:
+         - `workers/llm/llm_client.js` (facade)
+         - `workers/llm/providers/huggingface.js`, `vllm.js`, `replicate.js`, `gpt4all.js`
+         - migration: `api/migrations/0XX_add_llm_provider_metadata.sql`
+         - docs: `docs/LLM_PROVIDER_ONBOARDING.md`
+      - Next step: scaffold `workers/llm/providers/huggingface.js` (recommended first open-source adapter). 
+
 
 If Ollama is not running, all LLM functions degrade to local heuristics (regex NER, keyword sentiment, truncation) automatically. No data is ever sent outside your machine.
 

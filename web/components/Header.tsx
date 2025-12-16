@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import LastVisitedBarber from './LastVisitedBarber';
 
-export default function Header(): JSX.Element {
+export default function Header(): React.ReactElement {
   return (
     <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid #e6eef9', background: 'linear-gradient(90deg,#fff,#f8fafc)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>

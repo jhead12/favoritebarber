@@ -4,16 +4,22 @@
   "private": true,
   "scripts": {
     "dev": "podman compose up --build",
+    "dev:podman": "podman compose up --build",
+    "dev:docker": "docker compose up --build",
     "down": "podman compose down",
     "api:dev": "npm --prefix api run dev",
     "web:dev": "npm --prefix web run dev",
     "worker:dev": "npm --prefix workers run dev",
     "migrate": "npm --prefix api run migrate",
-    "seed": "npm --prefix api run seed"
+    "seed": "npm --prefix api run seed",
+    "test:integration": "node tests/integration/test_image_processor.js",
+    "test:smoke": "node tests/smoke/api_smoke.js",
+    "reconcile:orphans": "node api/scripts/reconcile_orphan_image_analyses.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
-    "node-cron": "^4.2.1"
+    "node-cron": "^4.2.1",
+    "playwright": "^1.57.0"
   }
 }

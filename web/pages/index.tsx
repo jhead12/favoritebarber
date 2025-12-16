@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import SearchBar from '../components/SearchBar';
 import TrustScoreBadge from '../components/TrustScoreBadge';
+import dynamic from 'next/dynamic';
+const AdminReconciler = dynamic(() => import('../components/AdminReconciler'), { ssr: false, loading: () => null });
 import { mapApiBarberToUi, UiBarber } from '../lib/adapters';
 
 const MOCK_BARBERS = [
@@ -37,6 +39,8 @@ const MOCK_BARBERS = [
 ];
 
 export default function Home() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const [results, setResults] = useState<UiBarber[]>(MOCK_BARBERS as unknown as UiBarber[]);
   const [latestPositive, setLatestPositive] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
@@ -61,21 +65,48 @@ export default function Home() {
       }
     };
 
+    // Additionally fetch MCP barbers to populate the results list (DB-backed view)
+    const fetchMcpBarbers = async () => {
+      try {
+        const url = new URL('/api/mcp/barbers', apiBase);
+        const res = await fetch(url.toString());
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (data && Array.isArray(data.results) && data.results.length > 0) {
+          const mapped = data.results.map((b: any) => mapApiBarberToUi(b));
+          setResults(mapped);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => fetchLatest(pos.coords.latitude, pos.coords.longitude),
         () => {
           // fallback center (San Francisco)
           fetchLatest(37.7749, -122.4194);
+          fetchMcpBarbers();
         },
         { timeout: 5000 }
       );
     } else {
       fetchLatest(37.7749, -122.4194);
+      fetchMcpBarbers();
     }
 
     return () => { cancelled = true; };
   }, []);
+
+  const getApiBase = () => {
+    // Prefer explicit env var when provided (used for override). When running in the browser
+    // default to the current origin so client-side fetches use the same host the page was loaded from.
+    if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+    if (typeof window !== 'undefined') return window.location.origin;
+    return 'http://localhost:3000';
+  };
 
   const handleSearch = async (term: string, location: string) => {
     // (old signature supported only term+location). If caller supplies coords, they will be appended.
@@ -83,7 +114,7 @@ export default function Home() {
     setError(null);
     try {
       // Prefer explicit API URL via `NEXT_PUBLIC_API_URL` (set to e.g. http://localhost:3000 or http://api:3000 in compose).
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const apiBase = getApiBase();
       // Prefer the API search endpoint which returns normalized DB-backed results.
       // The SearchBar may pass coordinates in the location string as `lat,lon`. Detect that.
       const url = new URL('/api/yelp-search', apiBase);
@@ -104,11 +135,57 @@ export default function Home() {
       const items = (data.results || data || []);
       const mapped = items.map((b: any) => mapApiBarberToUi(b));
       setResults(mapped);
+      // debounce and batch enqueue discovery jobs for returned shops
+      try {
+        scheduleEnqueue(items);
+      } catch (e) {
+        // ignore
+      }
     } catch (err: any) {
       setError(err.message || 'Search failed');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Debounce and batching for enqueueing discovery jobs
+  const enqueueTimer = useRef<number | null>(null);
+  const pendingShops = useRef<any[]>([]);
+  const [discoveryJobs, setDiscoveryJobs] = useState<any[]>([]);
+  const [discoveryBanner, setDiscoveryBanner] = useState<{ visible: boolean; count: number }>({ visible: false, count: 0 });
+
+  const scheduleEnqueue = (shops: any[]) => {
+    // append shops to pending list, dedupe by id
+    const ids = new Set(pendingShops.current.map(s => s.id));
+    for (const s of shops) if (!ids.has(s.id)) pendingShops.current.push(s);
+    if (enqueueTimer.current) window.clearTimeout(enqueueTimer.current);
+    // schedule enqueue in 1s (debounce)
+    enqueueTimer.current = window.setTimeout(() => {
+      doEnqueuePending();
+    }, 1000) as unknown as number;
+  };
+
+  const doEnqueuePending = async () => {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const enqueueUrl = new URL('/api/search', apiBase).toString();
+    const toSend = pendingShops.current.splice(0, 10); // limit batch
+    if (!toSend.length) return;
+    setDiscoveryBanner({ visible: true, count: toSend.length });
+    const jobs: any[] = [];
+    await Promise.all(toSend.map(async (shop) => {
+      try {
+        const res = await fetch(enqueueUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: shop.name, location: shop.address, yelp_id: shop.id }) });
+        if (res.ok) {
+          const data = await res.json();
+          jobs.push(data.job || data);
+        }
+      } catch (e) {
+        // ignore per-item errors
+      }
+    }));
+    setDiscoveryJobs(prev => [...jobs, ...prev]);
+    // hide banner after a short delay
+    setTimeout(() => setDiscoveryBanner({ visible: false, count: 0 }), 4000);
   };
 
   return (
@@ -120,6 +197,16 @@ export default function Home() {
           <p className="lede">See real trust scores, recent cuts, and specialties before you book.</p>
           <div className="hero-card">
             <SearchBar onSearch={handleSearch} />
+            {discoveryBanner.visible && (
+              <div style={{ marginTop: 8, padding: 8, background: '#07323a', borderRadius: 8, color: '#bfeafc' }}>
+                Discovery requested for {discoveryBanner.count} shop{discoveryBanner.count>1? 's':''}. Workers will fetch social profiles shortly.
+                {discoveryJobs.length > 0 && (
+                  <div style={{ marginTop: 6, fontSize: 13 }}>
+                    Job IDs: {discoveryJobs.slice(0,5).map(j => j.id || j.job_id || j["id"]).filter(Boolean).join(', ')}{discoveryJobs.length>5? '...': ''}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="filters">
               <button>Fade</button>
               <button>Beard trim</button>
@@ -143,12 +230,17 @@ export default function Home() {
               {latestPositive.barber.distance_m ? ` — ${(latestPositive.barber.distance_m/1609.34).toFixed(1)} mi` : ''}
             </p>
             <p style={{ margin: '6px 0 8px' }}>{latestPositive.review.summary}</p>
-            <a className="link" href={`/barber/${latestPositive.barber.id}`}>Open profile →</a>
+            <a className="link" href={`/barbers/${latestPositive.barber.id}`}>Open profile →</a>
           </div>
         )}
-        <div className="results-head">
-          <h2>Top nearby barbers</h2>
-          <p>{loading ? 'Searching Yelp…' : 'Powered by Yelp proxy'}</p>
+        <div className="results-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <h2>Top nearby barbers</h2>
+            <p>{loading ? 'Searching Yelp…' : 'Powered by Yelp proxy'}</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {mounted ? <AdminReconciler /> : null}
+          </div>
         </div>
         {error && <p style={{ color: '#f87272' }}>{error}</p>}
         <div className="grid">
@@ -168,7 +260,11 @@ export default function Home() {
                 </p>
                 <div className="row bottom">
                   <span className="price">{b.price}</span>
-                  <a className="link" href={`/barber/${b.id}`}>View profile →</a>
+                  {(() => {
+                    const rawId = String((b as any).id || '');
+                    const safeId = encodeURIComponent(rawId.trim());
+                    return <a className="link" href={(b as any).entityType === 'shop' ? `/shop/${safeId}` : `/barbers/${safeId}`}>View profile →</a>;
+                  })()}
                 </div>
               </div>
             </article>
