@@ -100,8 +100,14 @@ async function upsertImages(barberId, business, shopId=null) {
   for (const url of photos) {
     const res = await pool.query('SELECT id FROM images WHERE barber_id=$1 AND url=$2', [barberId, url]);
     if (res.rows.length > 0) continue;
-    await pool.query('INSERT INTO images (barber_id, shop_id, source, source_id, url, fetched_at) VALUES ($1,$2,$3,$4,$5,now())', [barberId, shopId, 'yelp', business.id, url]);
-    // TODO: enqueue image processing job here (push to Redis/Bull)
+    // insert into images table (store caption if provided by Yelp)
+    try {
+      const caption = (business && business.photo_captions && business.photo_captions[url]) || null;
+      await pool.query('INSERT INTO images (barber_id, shop_id, source, source_id, url, caption, fetched_at) VALUES ($1,$2,$3,$4,$5, $6, now()) ON CONFLICT (url) DO NOTHING', [barberId || null, shopId || null, 'yelp', business.id || null, url, caption]);
+      // attribution will be handled asynchronously by image_attribution_worker
+    } catch (e) {
+      console.warn('Failed to persist yelp image', url, e && e.message);
+    }
   }
 }
 
