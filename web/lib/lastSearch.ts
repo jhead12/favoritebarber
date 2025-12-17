@@ -2,6 +2,7 @@ export type LastSearch = {
   query: string;
   location: string;
   coords?: { latitude: number; longitude: number } | null;
+  filters?: string[];
   timestamp: number;
 };
 

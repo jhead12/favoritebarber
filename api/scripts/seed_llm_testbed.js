@@ -16,7 +16,7 @@ async function main() {
         try {
           for (const c of cases) {
             // simple insert into `reviews` table if present; tolerate missing columns
-            await client.query(`INSERT INTO reviews (external_id, content, created_at) VALUES ($1,$2,NOW()) ON CONFLICT DO NOTHING`, [c.id, c.text]);
+            await client.query(`INSERT INTO reviews (source, source_id, text, created_at) VALUES ($1,$2,$3,NOW()) ON CONFLICT DO NOTHING`, ['llm_testbed', c.id, c.text]);
           }
           didInsert = true;
         } finally { client.release(); }

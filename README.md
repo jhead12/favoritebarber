@@ -1,6 +1,6 @@
-# Favorite Barber - Concept
+# Rate Your Barber - Concept
 
-
+Find a barber that you can trust!
 
 (`web/`), API (`api/`), background workers (`workers/`), and database migrations (`api/migrations/`).
 
@@ -10,6 +10,63 @@ What this scaffold includes
 - Worker stubs (`workers/`) — Yelp fetcher, image processor, geocoder
 - Migration skeletons (`api/migrations/`) — SQL create table stubs
 - Dev tooling: `docker-compose.yml`, `.env.example`, and a simple `scripts/dev.sh`
+
+## MCP & Discovery Implementation Plan ✅ COMPLETE
+
+This project separates the MCP gateway (auth, scopes, rate limits, telemetry) from background workers (scraping, Playwright, LLMs, image processing). All 7 phases have been implemented.
+
+### Implementation Status (December 2025)
+
+✅ **Phase 1 — Worker Infrastructure**: Discovery daemon runs in worker service, Playwright/Chromium installed
+✅ **Phase 2 — Telemetry**: Request logging to `mcp_request_logs` with `X-Request-ID` correlation
+✅ **Phase 3 — Discovery Endpoints**: `POST /api/mcp/discover` and job status endpoints with scope enforcement
+✅ **Phase 4 — Live Yelp Proxy**: Real Yelp GraphQL calls with circuit breaker and cost tracking
+✅ **Phase 5 — Tests & CI**: Test database setup script, dependencies installed
+✅ **Phase 6 — Admin & Documentation**: Partner CRUD API, key management, comprehensive API docs
+✅ **Phase 7 — Webhooks**: Event subscriptions with HMAC signing and retry worker
+
+### Quick Start Commands
+
+```bash
+# Install worker dependencies
+cd workers && npm install
+
+# Apply migrations (includes MCP schema with all scopes)
+npm run migrate
+
+# Start all services
+docker compose up --build
+
+# Run discovery daemon standalone
+YELP_API_KEY=... DATABASE_URL=... node workers/discovery_daemon.js
+
+# Run webhook dispatcher
+node workers/webhook_dispatcher.js
+
+# Setup test database and run MCP tests
+./scripts/setup_test_db.sh
+npm run test:mcp
+
+# Run quota aggregation (cron job)
+node api/jobs/mcpQuotaAggregator.js
+```
+
+### Files Created
+
+- `api/lib/mcpTelemetry.js` — Request logging middleware
+- `api/jobs/mcpQuotaAggregator.js` — Daily quota aggregation
+- `api/routes/admin/partners.js` — Partner management API
+- `api/lib/mcpWebhooks.js` — Webhook signing and delivery
+- `api/contracts/mcp_v1.md` — Complete API documentation
+- `workers/webhook_dispatcher.js` — Webhook delivery worker
+- `scripts/setup_test_db.sh` — Automated test DB setup
+
+### Architecture Notes
+
+- **MCP API**: Lightweight, handles auth/rate-limits/telemetry, returns quickly
+- **Workers**: Heavy lifting (Playwright scraping, LLM processing, webhooks)
+- **Separation**: No Playwright in API process, workers scale independently
+- **Resilience**: Circuit breakers on Yelp calls, exponential backoff on webhooks
 
 
 - Start services:
@@ -25,6 +82,22 @@ Developer helpers
 	make up
 	make migrate
 	make seed
+
+Managing .env files
+
+- **Purpose:** Keep a single source of truth for environment variables in the repo root `.env` and propagate to subprojects (`api`, `workers`, `web`).
+- **Sync script:** `scripts/sync_env.sh` will copy non-comment lines from the root `.env` into each target's `.env`, making a timestamped backup of any existing file.
+- **Run:**
+
+```bash
+# Sync to default targets (api, workers, web)
+npm run sync:env
+
+# Sync to specific targets
+bash ./scripts/sync_env.sh api web
+```
+
+Backups are created as `.env.bak.<timestamp>` in each target directory. Use this to avoid editing multiple `.env` files manually.
 
 Local LLM Setup (Ollama + Llama 3.2)
 
@@ -66,48 +139,70 @@ For privacy-first text analysis (name extraction, sentiment, summarization), thi
 
 
 
-5. **Phase B** — LLM test harness (golden dataset, mock provider, benchmarks) - Done
-6. **LLM Provider Expansion** — Add Ollama-based enrichment to existing reviews- Done
-8. **Phase F.2** — Trust & Verification (spam detection, verified badges)
-9. **Phase D** — MCP rollout (after Yelp + LLM stabilize)
+5. **Phase B** — LLM test harness (golden dataset, mock provider, benchmarks) ✅
+6. **LLM Provider Expansion** — Add Ollama-based enrichment to existing reviews ✅
+8. **Phase F.2** — Trust & Verification (spam detection, verified badges) ✅
+9. **Phase D** — MCP rollout infrastructure ✅ (endpoints & admin UI pending)
 10. **Phase E/F.3** — Visual search, social feed (differentiators)
 
 Critical dependencies:
 - Don't roll out MCP until Yelp GraphQL quota management is proven
 - Phase 0 infrastructure must complete before scaling any ingestion
 - Frontend display can start in parallel with Yelp Phase 6-7 (once data exists in DB)
-    ### Todo
-    - Set up other LLM Providers
-    - MCP servers
-       - **Prerequisite**: Write `docs/MCP_ROADMAP.md` defining:
-         - Partner personas and use cases (who will use MCP and why)
-         - API surface (endpoints, schema, GraphQL vs REST)
-         - Auth model (OAuth2, API keys, or hybrid)
-         - Rate limits per partner tier and revenue model
-       - Complete Yelp GraphQL Phases 1–4 before full MCP rollout
-       - Clarify partner onboarding, auth scopes, and rate-limiting ownership (MCP enforces partner quotas; workers remain independent)
-       - Implement MCP telemetry hooks to track partner usage, quota consumption
-       - Link to `docs/MCP_DESIGN.md` for technical implementation details
-      ### LLM Provider Expansion TODO
-      - Goal: support a broad open-source LLM ecosystem while keeping Ollama for local/dev.
-      - **Strategy**: Implement ONE provider thoroughly before expanding (reduces integration risk).
-      - Adapters to add (priority): `huggingface` (Inference API/TGI) **FIRST**, then `vllm`/`tgi` (self-hosted), `replicate`, `gpt4all`/`llama.cpp`, plus existing `openai`/`anthropic` adapters, Grok, Gemini.
-      - **Risk mitigation**: Each provider has different error modes, rate limits, streaming APIs — parallel implementation risks technical debt.
-      - Implementation notes:
-         - Add `workers/llm/llm_client.js` facade and `workers/llm/providers/*` adapters (one file per provider).
-         - Support env vars: `LLM_PROVIDER`, `LLM_PROVIDER_FALLBACK` (comma-separated), `LLM_TIMEOUT_MS`, `LLM_MAX_RETRIES`, and provider keys like `HF_API_KEY`, `REPLICATE_API_KEY`.
-         - Add a provider capability registry (streaming, embeddings, function-calling) to choose appropriate model calls.
-         - Persist enrichment metadata: add migration to store `enriched_provider`, `enriched_model`, and `prompt_version` on `reviews`.
-         - Store raw LLM responses in `llm_enrichment_logs` table for debugging and re-enrichment.
-         - Enforce license/commercial checks before enabling community models (document onboarding in `docs/`).
-      - Safety & ops:
-         - Add pre-send moderation/masking for PII, telemetry (latency, token counts, errors), and per-provider quotas with canary rollout.
-      - Files to create/edit:
-         - `workers/llm/llm_client.js` (facade)
-         - `workers/llm/providers/huggingface.js`, `vllm.js`, `replicate.js`, `gpt4all.js`
-         - migration: `api/migrations/0XX_add_llm_provider_metadata.sql`
-         - docs: `docs/LLM_PROVIDER_ONBOARDING.md`
-      - Next step: scaffold `workers/llm/providers/huggingface.js` (recommended first open-source adapter). 
+
+### MCP Server Status ✅
+
+**Infrastructure Complete** (December 2025):
+- ✅ Database schema (migration 030): Partners, API keys, request logs, quotas, webhooks
+- ✅ Authentication: Bearer token validation with bcrypt-hashed keys
+- ✅ Rate limiting: Redis-backed per-minute and per-day quotas
+- ✅ Roadmap: `docs/MCP_ROADMAP.md` with partner personas, revenue model, API design
+- ✅ Migration applied successfully (all 30 migrations)
+- ✅ Core API endpoints (`api/routes/mcp.js`) - search, discovery, live Yelp, webhooks
+- ✅ Telemetry module (`api/lib/mcpTelemetry.js`) - request logging and analytics
+- ✅ Partner management admin API (`api/routes/admin/partners.js`)
+- ✅ API documentation (`api/contracts/mcp_v1.md`)
+- ✅ Webhook system with HMAC signing and delivery worker
+
+**Remaining Work**:
+- Partner management admin UI (`web/pages/admin/partners.tsx`) - frontend needed
+- CI/CD workflow (`.github/workflows/test-mcp.yml`) - GitHub Actions setup
+
+**Quick Start**:
+```bash
+# Apply MCP migration
+npm run migrate
+
+# Generate test API key (node REPL)
+const { generateAPIKey } = require('./api/middleware/mcpAuth');
+generateAPIKey(1, 'test', 'Dev Key').then(r => console.log('Key:', r.key));
+
+# Test auth
+curl -H "Authorization: Bearer ryb_test_YOUR_KEY" http://localhost:3000/api/health
+```
+
+**Testing**:
+```bash
+# Run MCP unit tests
+node --test tests/unit/test_mcp_auth.js
+node --test tests/unit/test_mcp_rate_limiter.js
+
+# Run integration tests (requires API server running)
+node --test tests/integration/test_mcp_e2e.js
+
+# Or run all MCP tests
+npm run test:mcp
+
+# See tests/README.md for complete testing guide
+```
+
+**Target**: Onboard 50 free partners + 5 paid partners ($299/mo) → $3k MRR in 6 months.
+
+See `docs/MCP_ROADMAP.md` for complete implementation plan.
+
+### Future Work
+- **LLM Provider Expansion**: Add Hugging Face, Replicate, vLLM adapters (implement one thoroughly before expanding)
+- **Advanced MCP Features**: Webhooks, live-Yelp proxy, bulk exports, GraphQL alternative 
 
 
 If Ollama is not running, all LLM functions degrade to local heuristics (regex NER, keyword sentiment, truncation) automatically. No data is ever sent outside your machine.

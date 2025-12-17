@@ -2,12 +2,92 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
 const llm = require('../../workers/llm/llm_client');
+const { requireScope } = require('../middleware/mcpAuth');
+const { trackYelpCall } = require('../lib/mcpTelemetry');
+const { createWebhookSubscription } = require('../lib/mcpWebhooks');
 
 // Health/status for MCP
 router.get('/health', (req, res) => {
   const info = { ok: true, time: new Date().toISOString() };
   if (req.mcp) info.partner = req.mcp.partnerId || null;
   res.json(info);
+});
+
+// POST /api/mcp/discover - Enqueue discovery job for social profile scraping
+// Requires: write:discover scope
+// Body: { shop_name, location_text, yelp_business_id }
+router.post('/discover', requireScope('write:discover'), async (req, res) => {
+  const { shop_name, location_text, yelp_business_id } = req.body || {};
+  
+  if (!shop_name && !yelp_business_id) {
+    return res.status(400).json({ 
+      error: 'missing_required_fields',
+      message: 'Either shop_name or yelp_business_id is required' 
+    });
+  }
+
+  try {
+    // Insert discovery job
+    const result = await pool.query(`
+      INSERT INTO discovery_jobs 
+      (shop_name, location_text, yelp_business_id, status, created_at, updated_at)
+      VALUES ($1, $2, $3, 'pending', NOW(), NOW())
+      RETURNING *
+    `, [shop_name || null, location_text || null, yelp_business_id || null]);
+
+    const job = result.rows[0];
+
+    res.status(202).json({
+      job_id: job.id,
+      status: job.status,
+      message: 'Discovery job enqueued',
+      _links: {
+        status: `/api/mcp/discover/${job.id}`
+      }
+    });
+
+  } catch (err) {
+    console.error('MCP /discover error', err);
+    res.status(500).json({ error: 'failed_to_enqueue_job' });
+  }
+});
+
+// GET /api/mcp/discover/:id - Check discovery job status
+router.get('/discover/:id', async (req, res) => {
+  const jobId = parseInt(req.params.id, 10);
+  
+  if (isNaN(jobId)) {
+    return res.status(400).json({ error: 'invalid_job_id' });
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT * FROM discovery_jobs WHERE id = $1',
+      [jobId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'job_not_found' });
+    }
+
+    const job = result.rows[0];
+
+    res.json({
+      job_id: job.id,
+      status: job.status,
+      shop_name: job.shop_name,
+      yelp_business_id: job.yelp_business_id,
+      attempts: job.attempts || 0,
+      result: job.result || null,
+      last_error: job.last_error || null,
+      created_at: job.created_at,
+      updated_at: job.updated_at
+    });
+
+  } catch (err) {
+    console.error('MCP /discover/:id error', err);
+    res.status(500).json({ error: 'internal_error' });
+  }
 });
 
 // Return a list of barbers backed by the `barber_detailed_info` view.
@@ -46,12 +126,59 @@ router.get('/barbers', async (req, res) => {
   }
 });
 
-// Feature-flagged live Yelp proxy (stub)
-router.get('/live_yelp/:id', (req, res) => {
+// Live Yelp proxy - fetch business details via Yelp GraphQL
+// GET /api/mcp/live_yelp/:id
+// Requires: read:live_yelp scope
+router.get('/live_yelp/:id', requireScope('read:live_yelp'), async (req, res) => {
   const enabled = process.env.MCP_ENABLE_LIVE_YELP === 'true';
-  if (!enabled) return res.status(403).json({ error: 'live_yelp_disabled' });
-  // For now respond with a placeholder — implementation should call the Yelp GraphQL client
-  res.json({ message: 'live_yelp proxy stub', id: req.params.id, partner: req.mcp && req.mcp.partnerId });
+  if (!enabled) {
+    return res.status(403).json({ 
+      error: 'live_yelp_disabled',
+      message: 'Live Yelp proxy is disabled. Set MCP_ENABLE_LIVE_YELP=true to enable.' 
+    });
+  }
+
+  const yelpId = req.params.id;
+  if (!yelpId) {
+    return res.status(400).json({ error: 'missing_yelp_id' });
+  }
+
+  try {
+    // Import Yelp GraphQL client
+    const { fetchBusinessDetails } = require('../yelp_graphql');
+    const { circuitBreaker } = require('../lib/circuitBreaker');
+
+    // Wrap in circuit breaker to prevent cascading failures
+    const businessData = await circuitBreaker.fire(
+      () => fetchBusinessDetails(yelpId),
+      'yelp_graphql'
+    );
+
+    // Track Yelp API call for telemetry
+    trackYelpCall(req, 1, 0.0001); // Estimate $0.0001 per call
+
+    res.json({
+      business: businessData,
+      source: 'yelp_graphql',
+      cached: false
+    });
+
+  } catch (err) {
+    console.error('MCP /live_yelp error', err);
+    
+    // Check if circuit is open
+    if (err.message && err.message.includes('circuit')) {
+      return res.status(503).json({ 
+        error: 'yelp_service_unavailable',
+        message: 'Yelp GraphQL service is temporarily unavailable. Circuit breaker is open.' 
+      });
+    }
+
+    res.status(500).json({ 
+      error: 'yelp_fetch_failed',
+      message: err.message || 'Failed to fetch business from Yelp' 
+    });
+  }
 });
 
 // Enrich recent reviews for a barber or for all barbers at a shop.
@@ -111,6 +238,121 @@ router.get('/enrich/reviews', async (req, res) => {
   } catch (err) {
     console.error('MCP /enrich/reviews error', err && err.message || err);
     res.status(500).json({ error: 'enrichment_failed' });
+  }
+});
+
+// POST /api/mcp/webhooks - Create webhook subscription
+// Requires: write:webhooks scope
+router.post('/webhooks', requireScope('write:webhooks'), async (req, res) => {
+  const { url, events } = req.body;
+
+  if (!url || !Array.isArray(events) || events.length === 0) {
+    return res.status(400).json({
+      error: 'missing_required_fields',
+      message: 'url (string) and events (array) are required'
+    });
+  }
+
+  // Validate URL format
+  try {
+    new URL(url);
+  } catch (err) {
+    return res.status(400).json({
+      error: 'invalid_url',
+      message: 'url must be a valid HTTP/HTTPS URL'
+    });
+  }
+
+  // Validate events
+  const validEvents = [
+    'discovery.completed',
+    'discovery.failed',
+    'review.created',
+    'review.updated',
+    'barber.verified'
+  ];
+
+  const invalidEvents = events.filter(e => !validEvents.includes(e));
+  if (invalidEvents.length > 0) {
+    return res.status(400).json({
+      error: 'invalid_events',
+      message: `Invalid event types: ${invalidEvents.join(', ')}`,
+      valid_events: validEvents
+    });
+  }
+
+  try {
+    const partnerId = req.mcp_partner.id;
+    const webhook = await createWebhookSubscription(partnerId, url, events);
+
+    res.status(201).json({
+      webhook_id: webhook.id,
+      url: webhook.url,
+      events: webhook.events,
+      secret: webhook.secret,
+      status: webhook.status,
+      created_at: webhook.created_at,
+      message: 'Webhook subscription created. Save the secret - it will not be shown again.'
+    });
+
+  } catch (err) {
+    console.error('MCP /webhooks POST error', err);
+    res.status(500).json({ error: 'failed_to_create_webhook' });
+  }
+});
+
+// GET /api/mcp/webhooks - List webhooks
+router.get('/webhooks', requireScope('write:webhooks'), async (req, res) => {
+  try {
+    const partnerId = req.mcp_partner.id;
+
+    const result = await pool.query(`
+      SELECT id, url, events, status, last_success_at, last_failure_at, failure_count, created_at, updated_at
+      FROM mcp_webhooks
+      WHERE partner_id = $1
+      ORDER BY created_at DESC
+    `, [partnerId]);
+
+    res.json({
+      webhooks: result.rows,
+      count: result.rows.length
+    });
+
+  } catch (err) {
+    console.error('MCP /webhooks GET error', err);
+    res.status(500).json({ error: 'internal_error' });
+  }
+});
+
+// DELETE /api/mcp/webhooks/:id - Delete webhook subscription
+router.delete('/webhooks/:id', requireScope('write:webhooks'), async (req, res) => {
+  const webhookId = parseInt(req.params.id, 10);
+
+  if (isNaN(webhookId)) {
+    return res.status(400).json({ error: 'invalid_webhook_id' });
+  }
+
+  try {
+    const partnerId = req.mcp_partner.id;
+
+    const result = await pool.query(`
+      DELETE FROM mcp_webhooks
+      WHERE id = $1 AND partner_id = $2
+      RETURNING id
+    `, [webhookId, partnerId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'webhook_not_found' });
+    }
+
+    res.json({
+      message: 'Webhook subscription deleted',
+      webhook_id: webhookId
+    });
+
+  } catch (err) {
+    console.error('MCP /webhooks DELETE error', err);
+    res.status(500).json({ error: 'internal_error' });
   }
 });
 

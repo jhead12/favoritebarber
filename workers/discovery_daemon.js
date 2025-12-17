@@ -28,6 +28,19 @@ async function processJob(job) {
     // call yelp_to_socials.run with appropriate params
     const out = await yelpToSocialsRun({ yelpId: job.yelp_business_id || null, name: job.shop_name || null, location: job.location_text || null, dryRun: false });
     await markJobCompleted(job.id, out);
+    // Trigger background image processing for any newly persisted images.
+    // Spawn the image_processor in the background to process pending images.
+    try {
+      const { spawn } = require('child_process');
+      const child = spawn(process.execPath, ['workers/image_processor.js', '--pending', '20'], {
+        detached: true,
+        stdio: 'ignore'
+      });
+      child.unref();
+      console.log('Spawned background image_processor for pending images');
+    } catch (e) {
+      console.warn('Failed to spawn image_processor:', e && e.message);
+    }
     // If this job was linked to a search_query, persist results into search_queries.results for frontend polling
     try {
       if (job.search_query_id) {
@@ -42,6 +55,7 @@ async function processJob(job) {
     await markJobFailed(job.id, String(e.message || e));
   }
 }
+
 
 async function loop() {
   while (true) {

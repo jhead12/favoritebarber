@@ -4,44 +4,48 @@ import TrustScoreBadge from '../components/TrustScoreBadge';
 import dynamic from 'next/dynamic';
 const AdminReconciler = dynamic(() => import('../components/AdminReconciler'), { ssr: false, loading: () => null });
 import { mapApiBarberToUi, UiBarber } from '../lib/adapters';
+import { saveLocation, loadLocation } from '../lib/location';
 
-const MOCK_BARBERS = [
+const MOCK_SHOPS = [
   {
-    id: 'b1',
-    name: 'Tony “Fade Lab” Rivera',
-    shop: 'Mission Cuts',
+    id: 'shop1',
+    name: 'Mission Cuts',
+    shop: '123 Mission St, SF',
     distance: '0.4 mi',
     trust: 92,
-    specialties: ['Low fade', 'Skin fade', 'Beard trim'],
-    price: '$45+',
+    specialties: ['Fade', 'Beard trim', 'Hot towel shave'],
+    price: '$$',
     thumb: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=400&q=60',
+    entityType: 'shop',
   },
   {
-    id: 'b2',
-    name: 'Samir K.',
-    shop: 'SoMa Barber Co.',
+    id: 'shop2',
+    name: 'SoMa Barber Co.',
+    shop: '456 Howard St, SF',
     distance: '1.1 mi',
     trust: 85,
     specialties: ['Taper', 'Textured crop', 'Pompadour'],
-    price: '$50+',
+    price: '$$',
     thumb: 'https://images.unsplash.com/photo-1503951914909-04e7d77c5cde?auto=format&fit=crop&w=400&q=60',
+    entityType: 'shop',
   },
   {
-    id: 'b3',
-    name: 'Alex “Clipper” Chen',
-    shop: 'Independent • Mobile',
+    id: 'shop3',
+    name: 'Castro Clippers',
+    shop: '789 Castro St, SF',
     distance: '2.3 mi',
     trust: 77,
     specialties: ['Buzz', 'Crew', 'Line-up'],
-    price: '$40+',
+    price: '$$',
     thumb: 'https://images.unsplash.com/photo-1503951914646-5700dea92f62?auto=format&fit=crop&w=400&q=60',
+    entityType: 'shop',
   },
 ];
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
-  const [results, setResults] = useState<UiBarber[]>(MOCK_BARBERS as unknown as UiBarber[]);
+  const [results, setResults] = useState<UiBarber[]>(MOCK_SHOPS as unknown as UiBarber[]);
   const [latestPositive, setLatestPositive] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,36 +69,80 @@ export default function Home() {
       }
     };
 
-    // Additionally fetch MCP barbers to populate the results list (DB-backed view)
-    const fetchMcpBarbers = async () => {
+    // Fetch nearby shops from Yelp (cached or live)
+    const fetchNearbyShops = async (lat: number, lon: number) => {
       try {
-        const url = new URL('/api/mcp/barbers', apiBase);
+        const url = new URL('/api/yelp-cached-search', apiBase);
+        url.searchParams.set('latitude', String(lat));
+        url.searchParams.set('longitude', String(lon));
+        url.searchParams.set('radius_m', '5000');
+        url.searchParams.set('term', 'barber');
         const res = await fetch(url.toString());
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled) return;
         if (data && Array.isArray(data.results) && data.results.length > 0) {
-          const mapped = data.results.map((b: any) => mapApiBarberToUi(b));
+          const mapped = data.results.map((shop: any) => {
+            const priceRange = shop.price || (shop.raw && shop.raw.price) || '$$';
+            let categories: string[] = [];
+            if (Array.isArray(shop.categories)) {
+              categories = shop.categories.map((c: any) => typeof c === 'string' ? c : (c.title || c.name || '')).filter(Boolean);
+            } else if (shop.raw && Array.isArray(shop.raw.categories)) {
+              categories = shop.raw.categories.map((c: any) => c.title || c.name || '').filter(Boolean);
+            }
+            return {
+              id: shop.id,
+              name: shop.name || '',
+              shop: shop.address || (shop.location && shop.location.display_address ? (shop.location.display_address || []).join(', ') : ''),
+              distance: shop.distance_m ? `${(shop.distance_m / 1609.34).toFixed(1)} mi` : '',
+              trust: shop.rating ? Math.round((shop.rating / 5) * 100) : (shop.review_count ? 75 : 0),
+              specialties: categories.slice(0,3),
+              price: priceRange,
+              thumb: shop.image_url || (shop.raw && shop.raw.image_url) || '',
+              entityType: 'shop',
+            };
+          });
           setResults(mapped);
         }
       } catch (e) {
-        // ignore
+        console.error('fetchNearbyShops error:', e);
       }
     };
 
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+    // Check saved location first
+    const savedLocation = loadLocation();
+    if (savedLocation) {
+      console.log(`[Location] Using saved location: ${savedLocation.lat}, ${savedLocation.lon}`);
+      fetchLatest(savedLocation.lat, savedLocation.lon);
+      fetchNearbyShops(savedLocation.lat, savedLocation.lon);
+    } else if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      console.log('[Geolocation] Requesting user position...');
       navigator.geolocation.getCurrentPosition(
-        (pos) => fetchLatest(pos.coords.latitude, pos.coords.longitude),
-        () => {
-          // fallback center (San Francisco)
-          fetchLatest(37.7749, -122.4194);
-          fetchMcpBarbers();
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          console.log(`[Geolocation] Success: ${lat}, ${lon}`);
+          try { saveLocation(lat, lon); } catch (e) {}
+          fetchLatest(lat, lon);
+          fetchNearbyShops(lat, lon);
         },
-        { timeout: 5000 }
+        (err) => {
+          console.warn('[Geolocation] Failed or denied:', err.message || err.code);
+          // fallback center (San Francisco)
+          const lat = 37.7749;
+          const lon = -122.4194;
+          console.log(`[Geolocation] Using fallback: SF ${lat}, ${lon}`);
+          fetchLatest(lat, lon);
+          fetchNearbyShops(lat, lon);
+        },
+        { timeout: 5000, enableHighAccuracy: false }
       );
     } else {
-      fetchLatest(37.7749, -122.4194);
-      fetchMcpBarbers();
+      console.warn('[Geolocation] navigator.geolocation not available');
+      const lat = 37.7749;
+      const lon = -122.4194;
+      fetchLatest(lat, lon);
+      fetchNearbyShops(lat, lon);
     }
 
     return () => { cancelled = true; };
@@ -108,25 +156,43 @@ export default function Home() {
     return 'http://localhost:3000';
   };
 
-  const handleSearch = async (term: string, location: string) => {
-    // (old signature supported only term+location). If caller supplies coords, they will be appended.
+  const handleSearch = async (term: string, location: string, coords?: { latitude: number; longitude: number } | null, filters?: string[]) => {
     setLoading(true);
     setError(null);
     try {
       // Prefer explicit API URL via `NEXT_PUBLIC_API_URL` (set to e.g. http://localhost:3000 or http://api:3000 in compose).
       const apiBase = getApiBase();
       // Prefer the API search endpoint which returns normalized DB-backed results.
-      // The SearchBar may pass coordinates in the location string as `lat,lon`. Detect that.
       const url = new URL('/api/yelp-search', apiBase);
-      url.searchParams.set('term', term || 'barber');
+      
+      let searchTerm = term || 'barber';
+      if (filters) {
+        const styleFilters = filters.filter(f => ['Fade', 'Beard trim'].includes(f));
+        if (styleFilters.length > 0) {
+          searchTerm += ' ' + styleFilters.join(' ');
+        }
+        if (filters.includes('Open now')) {
+          url.searchParams.set('open_now', 'true');
+        }
+        // Note: 'Mobile' attribute support depends on Yelp API or backend implementation
+        if (filters.includes('Mobile')) {
+           searchTerm += ' mobile';
+        }
+      }
+      url.searchParams.set('term', searchTerm);
 
-      // If the location looks like `lat,lon` use latitude & longitude parameters, else use location text
-      const maybeCoords = (location || '').split(',');
-      if (maybeCoords.length === 2 && !isNaN(Number(maybeCoords[0])) && !isNaN(Number(maybeCoords[1]))) {
-        url.searchParams.set('latitude', String(Number(maybeCoords[0])));
-        url.searchParams.set('longitude', String(Number(maybeCoords[1])));
+      if (coords) {
+        url.searchParams.set('latitude', String(coords.latitude));
+        url.searchParams.set('longitude', String(coords.longitude));
       } else {
-        url.searchParams.set('location', location || 'San Francisco, CA');
+        // If the location looks like `lat,lon` use latitude & longitude parameters, else use location text
+        const maybeCoords = (location || '').split(',');
+        if (maybeCoords.length === 2 && !isNaN(Number(maybeCoords[0])) && !isNaN(Number(maybeCoords[1]))) {
+          url.searchParams.set('latitude', String(Number(maybeCoords[0])));
+          url.searchParams.set('longitude', String(Number(maybeCoords[1])));
+        } else {
+          url.searchParams.set('location', location || 'San Francisco, CA');
+        }
       }
 
       const res = await fetch(url.toString());
@@ -207,12 +273,6 @@ export default function Home() {
                 )}
               </div>
             )}
-            <div className="filters">
-              <button>Fade</button>
-              <button>Beard trim</button>
-              <button>Mobile</button>
-              <button>Open now</button>
-            </div>
           </div>
         </div>
         <div className="map-shell">
@@ -230,7 +290,7 @@ export default function Home() {
               {latestPositive.barber.distance_m ? ` — ${(latestPositive.barber.distance_m/1609.34).toFixed(1)} mi` : ''}
             </p>
             <p style={{ margin: '6px 0 8px' }}>{latestPositive.review.summary}</p>
-            <a className="link" href={`/barbers/${latestPositive.barber.id}`}>Open profile →</a>
+            <a className="link" href={`/shop/${latestPositive.barber.id}`}>Open shop →</a>
           </div>
         )}
         <div className="results-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -279,9 +339,6 @@ export default function Home() {
         .eyebrow { letter-spacing: 1px; text-transform: uppercase; color: #8fa3b5; font-size: 12px; }
         .lede { color: #b9c7d6; max-width: 560px; }
         .hero-card { margin-top: 18px; display: flex; flex-direction: column; gap: 12px; }
-        .filters { display: flex; gap: 8px; flex-wrap: wrap; }
-        .filters button { padding: 8px 12px; border-radius: 10px; border: 1px solid #1f2b36; background: #0f1620; color: #d9e3ee; cursor: pointer; }
-        .filters button:hover { border-color: #4fb4ff; }
         .map-shell { align-self: stretch; }
         .map-placeholder { border: 1px dashed #294055; border-radius: 14px; height: 260px; display: grid; place-items: center; color: #7da4c0; background: #0b111a; }
         .map-note { color: #8fa3b5; font-size: 13px; margin-top: 8px; }

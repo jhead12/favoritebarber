@@ -21,9 +21,9 @@ const reviewsRoutes = require('./routes/reviews');
 const claimsRoutes = require('./routes/claims');
 const { requireAuth } = require('./middleware/auth');
 const { requireMcpAuth } = require('./middleware/mcpAuth');
-const { mcpRateLimitMiddleware } = require('./lib/mcpRateLimiter');
-const mcpRoutes = require('./routes/mcp');
-const app = express();
+const { mcpRateLimitMiddleware } = require('./lib/mcpRateLimitMiddleware');
+const { mcpTelemetryMiddleware } = require('./lib/mcpTelemetry');
+const mcpRoutes = require('./routes/mcp');const adminPartnersRoutes = require('./routes/admin/partners');const app = express();
 // Initialize Sentry (optional)
 const { initSentry, requestHandler: sentryRequestHandler, errorHandler: sentryErrorHandler } = require('./lib/sentry');
 initSentry();
@@ -65,8 +65,11 @@ app.use('/api/users', requireAuth, userRoutes);
 // Mount claims routes (profile claiming)
 app.use('/api/claims', claimsRoutes);
 
-// MCP gateway routes (partner-facing). auth + rate-limit enforced here.
-app.use('/api/mcp', requireMcpAuth, mcpRateLimitMiddleware, mcpRoutes);
+// MCP gateway routes (partner-facing). auth + rate-limit + telemetry enforced here.
+app.use('/api/mcp', requireMcpAuth, mcpRateLimitMiddleware, mcpTelemetryMiddleware, mcpRoutes);
+
+// Admin routes (partner management)
+app.use('/api/admin/partners', requireMcpAuth, adminPartnersRoutes);
 
 // Lightweight Yelp proxy for search (term + location)
 // Example: /api/yelp-search?term=fade&location=San%20Francisco

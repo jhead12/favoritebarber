@@ -8,6 +8,7 @@ const LLM_MAX_RETRIES = Number(process.env.LLM_MAX_RETRIES || 1);
 
 // Load available providers
 const providers = {};
+try { providers.mock = require('./providers/mock'); } catch (e) {}
 try { providers.openai = require('./providers/openai'); } catch (e) {}
 try { providers.anthropic = require('./providers/anthropic'); } catch (e) {}
 try { providers.ollama = require('./providers/ollama'); } catch (e) {}
@@ -117,7 +118,45 @@ async function extractAdjectivesFromReview(text, opts = {}) {
   return [];
 }
 
+/**
+ * Generic LLM call method for arbitrary prompts
+ * Used for tasks beyond the standard facade methods (e.g., moderation)
+ * 
+ * @param {string} prompt - The prompt text to send to the LLM
+ * @param {Object} options - Provider-specific options (model, temperature, max_tokens, etc.)
+ * @returns {Promise<string>} LLM response text
+ */
+async function call(prompt, options = {}) {
+  const providerName = process.env.LLM_PROVIDER || activeProvider;
+  const provider = providers[providerName] || providers.ollama;
+  if (!provider) throw new Error('no_llm_provider_available');
+
+  // Check if provider supports a generic call method
+  if (typeof provider.call === 'function') {
+    try {
+      const p = provider.call(prompt, options);
+      const res = await withTimeout(p, options.timeoutMs || LLM_TIMEOUT_MS);
+      return res;
+    } catch (err) {
+      throw new Error(`LLM call failed: ${err.message}`);
+    }
+  }
+
+  // If provider doesn't support generic call, throw error
+  throw new Error(`Provider ${providerName} does not support generic call() method`);
+}
+
 function providerFallbackAvailable(p) { return p && typeof p.extractNamesFromReview === 'function'; }
+
+// Export llm_client as an object with methods (for compatibility with existing code)
+const llm_client = {
+  init,
+  extractNamesFromReview,
+  analyzeSentiment,
+  summarizeReview,
+  extractAdjectivesFromReview,
+  call
+};
 
 module.exports = {
   init,
@@ -125,4 +164,6 @@ module.exports = {
   analyzeSentiment,
   summarizeReview,
   extractAdjectivesFromReview,
+  call,
+  llm_client
 };

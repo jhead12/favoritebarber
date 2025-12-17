@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "podman compose up --build",
+    "sync:env": "bash ./scripts/sync_env.sh",
     "dev:podman": "podman compose up --build",
     "dev:docker": "docker compose up --build",
     "down": "podman compose down",
@@ -12,8 +13,14 @@
     "worker:dev": "npm --prefix workers run dev",
     "migrate": "npm --prefix api run migrate",
     "seed": "npm --prefix api run seed",
+    "test": "node --test tests/**/*.js",
+    "test:unit": "node --test tests/unit/**/*.js",
     "test:integration": "node tests/integration/test_image_processor.js",
     "test:smoke": "node tests/smoke/api_smoke.js",
+    "test:mcp": "node --test tests/unit/test_mcp*.js tests/integration/test_mcp*.js",
+    "test:mcp:llm": "DATABASE_URL=postgresql://postgres:password@localhost:5432/rateyourbarber_test node --test tests/integration/test_mcp_llm.js",
+    "test:mcp:llm:live": "DATABASE_URL=postgresql://postgres:password@localhost:5432/rateyourbarber_test LLM_PROVIDER=openai node --test tests/integration/test_mcp_llm.js",
+    "test:mcp:llm:ollama": "DATABASE_URL=postgresql://postgres:password@localhost:5432/rateyourbarber_test LLM_PROVIDER=ollama node --test tests/integration/test_mcp_llm.js",
     "test:llm": "./scripts/run_llm_tests.sh",
     "test:llm:comparison": "./scripts/run_llm_tests.sh comparison",
     "test:llm:accuracy": "./scripts/run_llm_tests.sh accuracy",
@@ -21,7 +28,14 @@
     "test:llm:all": "./scripts/run_llm_tests.sh all",
     "test:llm:benchmark": "./scripts/run_benchmark.sh",
     "test:llm:benchmark:all": "./scripts/run_benchmark.sh all",
+    "test:llm:benchmark:golden": "node tests/benchmarks/llm_golden_benchmark.js",
+    "test:llm:benchmark:golden:mock": "LLM_PROVIDER=mock node tests/benchmarks/llm_golden_benchmark.js",
+    "test:llm:benchmark:golden:ollama": "LLM_PROVIDER=ollama node tests/benchmarks/llm_golden_benchmark.js",
+    "test:llm:benchmark:golden:openai": "LLM_PROVIDER=openai node tests/benchmarks/llm_golden_benchmark.js",
     "test:llm:golden": "./scripts/run_benchmark.sh mock",
+    "test:llm:live": "./scripts/test_llm_providers.sh",
+    "test:moderation": "LLM_PROVIDER=mock node workers/llm/test_moderator.js",
+    "test:moderation:openai": "LLM_PROVIDER=openai node workers/llm/test_moderator.js",
     "enrich": "node workers/enrichment_worker.js --pending",
     "enrich:all": "node workers/enrichment_worker.js --all",
     "enrich:sample": "node workers/enrichment_worker.js --sample",
@@ -33,5 +47,9 @@
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.2.1",
     "playwright": "^1.57.0"
+  },
+  "devDependencies": {
+    "ioredis": "^5.8.2",
+    "pg": "^8.16.3"
   }
 }

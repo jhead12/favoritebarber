@@ -51,6 +51,18 @@ async function callOpenAI(prompt, opts = {}) {
   return text;
 }
 
+/**
+ * Generic call method for arbitrary prompts
+ * Used by moderator, trust scorer, and other advanced use cases
+ * 
+ * @param {string} prompt - The prompt text
+ * @param {Object} options - { model, temperature, max_tokens, ... }
+ * @returns {Promise<string>} LLM response text
+ */
+async function call(prompt, options = {}) {
+  return callOpenAI(prompt, options);
+}
+
 function parseNamesFromText(s) {
   if (!s) return [];
   const t = s.trim();
@@ -58,4 +70,4 @@ function parseNamesFromText(s) {
   return t.split(',').map(x => x.trim()).filter(Boolean).slice(0,3);
 }
 
-module.exports = { init, extractNamesFromReview, analyzeSentiment, summarizeReview, extractAdjectivesFromReview };
+module.exports = { init, extractNamesFromReview, analyzeSentiment, summarizeReview, extractAdjectivesFromReview, call };

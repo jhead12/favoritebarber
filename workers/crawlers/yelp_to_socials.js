@@ -99,7 +99,18 @@ async function visitAndExtract(targetUrl, browser) {
     // For convenience return inferred platforms for socials
     const socialsWithPlatform = socials.map(u => ({ url: u, platform: inferPlatformFromUrl(u) }));
 
-    return { targetUrl, htmlPath, imgPath, socials: socialsWithPlatform, handles: handleMatches };
+    // attempt to extract an og:image (profile / preview image) from the visited page
+    let profile_image = null;
+    try {
+      profile_image = await page.$eval('meta[property="og:image"]', el => el.content).catch(() => null);
+      if (!profile_image) {
+        profile_image = await page.$eval('link[rel="image_src"]', el => el.href).catch(() => null);
+      }
+    } catch (e) {
+      profile_image = null;
+    }
+
+    return { targetUrl, htmlPath, imgPath, socials: socialsWithPlatform, handles: handleMatches, profile_image };
   } finally {
     try { await page.close(); } catch (e) {}
   }
@@ -148,6 +159,21 @@ async function run({ yelpId = null, name = null, location = null, dryRun = true 
             const platform = platformHint || (verification && verification.heuristic && verification.heuristic.evidence && verification.heuristic.evidence[0] && verification.heuristic.evidence[0].platform) || null;
             const confidence = (verification && verification.heuristic && verification.heuristic.confidence) || baseConfidence;
             const created = await createCandidate({ platform, handle: candidate.handles[0] || null, profile_url: profileUrl || ext, name: business.name, evidence, confidence, source: 'yelp_scrape' });
+
+            // Persist profile image (if discovered) into images table so it can be processed
+            try {
+              const profileImageUrl = info && (info.profile_image || null);
+              if (created && created.id && profileImageUrl) {
+                const insert = await pool.query(
+                  'INSERT INTO images (source, source_id, url, fetched_at) VALUES ($1,$2,$3,now()) RETURNING id',
+                  ['social', created.id, profileImageUrl]
+                );
+                console.log('Persisted social image for profile', created.id, 'image_id=', insert.rows && insert.rows[0] && insert.rows[0].id);
+              }
+            } catch (e) {
+              console.warn('Failed to persist social profile image for', created && created.id, e && e.message);
+            }
+
             results.push({ ext, created });
             console.log('Persisted social candidate for', profileUrl, 'platform=', platform, 'id=', created && created.id);
           } catch (e) { console.warn('createCandidate failed', e.message || e); }

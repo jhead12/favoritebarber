@@ -6,4 +6,5 @@ module.exports = {
   analyzeSentiment: ollama.analyzeSentiment,
   summarizeReview: ollama.summarizeReview,
   extractAdjectivesFromReview: ollama.extractAdjectivesFromReview,
+  call: ollama.call
 };
