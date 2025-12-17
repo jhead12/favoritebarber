@@ -46,10 +46,40 @@ def extract_candidate_names(text):
 def main():
     for i, r in enumerate(SAMPLE_REVIEWS, 1):
         names = extract_candidate_names(r)
+        hairs = extract_hairstyles(r)
         print(f"Review {i}:")
         print("", r)
         print("Candidates:", names)
+        print("Hairstyles:", hairs)
         print()
+
+
+def extract_hairstyles(text):
+    if not text or not isinstance(text, str):
+        return []
+    t = text.lower()
+    mapping = {
+        'fade': ['fade', 'faded', 'skin fade', 'low fade', 'high fade', 'taper fade'],
+        'pompadour': ['pompadour'],
+        'undercut': ['undercut'],
+        'buzz cut': ['buzz cut', 'buzz'],
+        'crew cut': ['crew cut'],
+        'mohawk': ['mohawk', 'mohican'],
+        'afro': ['afro'],
+        'braids': ['braid', 'braids', 'cornrows'],
+        'ponytail': ['ponytail'],
+        'dreadlocks': ['dread', 'dreadlocks', 'locs', 'locks'],
+        'man bun': ['man bun', 'top knot'],
+        'taper': ['taper', 'tapered'],
+        'slicked back': ['slicked back', 'slick back']
+    }
+    found = set()
+    for canon, variants in mapping.items():
+        for v in variants:
+            if re.search(r'\b' + re.escape(v) + r'\b', text, flags=re.IGNORECASE):
+                found.add(canon)
+                break
+    return list(found)
 
 if __name__ == '__main__':
     main()
