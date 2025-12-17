@@ -1,6 +1,12 @@
 const { GraphQLClient } = require('graphql-request');
 require('dotenv').config();
 const { acquireYelpToken } = require('./lib/mcpRateLimiter');
+const { CircuitBreaker } = require('./lib/circuitBreaker');
+const { costTracker } = require('./lib/costTracker');
+const { logExternalCall, logger } = require('./lib/logger');
+
+// Breaker instance for Yelp outbound calls
+const yelpBreaker = new CircuitBreaker({ failureThreshold: 5, successThreshold: 2, timeoutMs: Number(process.env.YELP_BREAKER_TIMEOUT_MS || 10000), resetMs: Number(process.env.YELP_BREAKER_RESET_MS || 30000) });
 
 const YELP_GRAPHQL_URL = 'https://api.yelp.com/v3/graphql';
 const API_KEY = process.env.YELP_API_KEY || process.env.YELP_API_KEY_TOKEN;
@@ -57,10 +63,14 @@ async function queryYelpGraphql(queryString, opts = {}) {
   let lastErr = null;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const data = await client.request(queryString);
+      const start = Date.now();
+      const data = await yelpBreaker.exec(() => logExternalCall({ provider: 'yelp', operation: 'graphql', fn: () => client.request(queryString) }));
+      const durationMs = Date.now() - start;
+      try { costTracker.record({ provider: 'yelp', model: 'graphql', cost: opts.cost || 1, quotaCost: 1, durationMs, success: true }); } catch (e) { logger.warn({ err: e }, 'costTracker.record failed'); }
       return data;
     } catch (err) {
       lastErr = err;
+      try { costTracker.record({ provider: 'yelp', model: 'graphql', cost: opts.cost || 1, quotaCost: 1, durationMs: 0, success: false }); } catch (e) { logger.warn({ err: e }, 'costTracker.record failed'); }
       const status = err && err.response && err.response.status;
       if (status && status >= 400 && status < 500 && status !== 429) {
         const body = err.response && err.response.data ? err.response.data : null;
@@ -76,4 +86,104 @@ async function queryYelpGraphql(queryString, opts = {}) {
   throw e;
 }
 
-module.exports = { queryYelpGraphql };
+// GraphQL query definitions
+const BUSINESS_DETAILS_QUERY = `
+  query Business($id: String!) {
+    business(id: $id) {
+      id
+      name
+      url
+      rating
+      review_count
+      price
+      photos
+      hours {
+        open {
+          day
+          start
+          end
+        }
+      }
+      categories {
+        title
+        alias
+      }
+      location {
+        address1
+        address2
+        address3
+        city
+        state
+        zip_code
+        country
+      }
+      coordinates {
+        latitude
+        longitude
+      }
+    }
+  }
+`;
+
+const REVIEWS_QUERY = `
+  query BusinessReviews($id: String!, $limit: Int, $offset: Int) {
+    business(id: $id) {
+      reviews(limit: $limit, offset: $offset) {
+        total
+        review {
+          id
+          text
+          rating
+          time_created
+          user {
+            id
+            name
+            image_url
+          }
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * Fetch business details via GraphQL
+ * @param {string} yelpId - Yelp business ID
+ * @param {object} opts - Options (accountId, cost, timeoutMs, retries)
+ * @returns {Promise<object>} Raw GraphQL business payload
+ */
+async function fetchBusinessDetails(yelpId, opts = {}) {
+  if (!yelpId) throw new Error('yelpId is required');
+  const variables = { id: yelpId };
+  const result = await queryYelpGraphql(BUSINESS_DETAILS_QUERY, { ...opts, variables });
+  return result.business || null;
+}
+
+/**
+ * Fetch business reviews via GraphQL (with pagination)
+ * @param {string} yelpId - Yelp business ID
+ * @param {object} opts - Options (limit, offset, accountId, cost, timeoutMs, retries)
+ * @returns {Promise<object>} { total, reviews: [...] }
+ */
+async function fetchBusinessReviews(yelpId, opts = {}) {
+  if (!yelpId) throw new Error('yelpId is required');
+  const limit = opts.limit || 20;
+  const offset = opts.offset || 0;
+  const variables = { id: yelpId, limit, offset };
+  const result = await queryYelpGraphql(REVIEWS_QUERY, { ...opts, variables });
+  if (!result.business || !result.business.reviews) {
+    return { total: 0, reviews: [] };
+  }
+  return {
+    total: result.business.reviews.total || 0,
+    reviews: result.business.reviews.review || []
+  };
+}
+
+module.exports = { 
+  queryYelpGraphql, 
+  fetchBusinessDetails, 
+  fetchBusinessReviews,
+  BUSINESS_DETAILS_QUERY,
+  REVIEWS_QUERY
+};

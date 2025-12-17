@@ -2,7 +2,9 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { requestLoggerMiddleware, logger } = require('./lib/logger');
+const { requestLoggerMiddleware, logger, logExternalCall } = require('./lib/logger');
+const { CircuitBreaker } = require('./lib/circuitBreaker');
+const { costTracker } = require('./lib/costTracker');
 const { pool } = require('./db');
 const { queryYelpGraphql } = require('./yelp_graphql');
 const { mapRestBusiness, mapGraphqlBusiness } = require('./lib/yelp_normalize');
@@ -22,9 +24,16 @@ const { requireMcpAuth } = require('./middleware/mcpAuth');
 const { mcpRateLimitMiddleware } = require('./lib/mcpRateLimiter');
 const mcpRoutes = require('./routes/mcp');
 const app = express();
+// Initialize Sentry (optional)
+const { initSentry, requestHandler: sentryRequestHandler, errorHandler: sentryErrorHandler } = require('./lib/sentry');
+initSentry();
+// Breaker for Yelp outbound calls
+const yelpBreaker = new CircuitBreaker({ failureThreshold: 5, successThreshold: 2, timeoutMs: Number(process.env.YELP_BREAKER_TIMEOUT_MS || 10000), resetMs: Number(process.env.YELP_BREAKER_RESET_MS || 30000) });
 const YELP_API_KEY = process.env.YELP_API_KEY;
 app.use(cors());
 app.use(express.json());
+// Attach Sentry request handler early in the pipeline (no-op when Sentry not configured)
+app.use(sentryRequestHandler());
 app.use(requestLoggerMiddleware);
 
 // Mount auth routes (public)
@@ -93,9 +102,16 @@ app.get('/api/yelp-search', async (req, res) => {
       console.warn('acquireYelpToken failed for /api/yelp-search', e);
     }
 
-    const yelpRes = await fetch(url.toString(), {
-      headers: { Authorization: `Bearer ${YELP_API_KEY}` },
-    });
+    let yelpRes;
+    try {
+      const start = Date.now();
+      yelpRes = await yelpBreaker.exec(() => logExternalCall({ provider: 'yelp', operation: 'rest_search', fn: () => fetch(url.toString(), { headers: { Authorization: `Bearer ${YELP_API_KEY}` } }) }));
+      const durationMs = Date.now() - start;
+      try { costTracker.record({ provider: 'yelp', model: 'rest_search', cost: 1, quotaCost: 1, durationMs, success: yelpRes && yelpRes.ok }); } catch (e) { logger.warn({ err: e }, 'costTracker.record failed'); }
+    } catch (err) {
+      logger.error({ err, route: '/api/yelp-search' }, 'Yelp REST search failed');
+      return res.status(502).json({ error: 'Yelp error', detail: String(err) });
+    }
     if (!yelpRes.ok) {
       const txt = await yelpRes.text();
       return res.status(502).json({ error: 'Yelp error', detail: txt });
@@ -138,7 +154,16 @@ app.get('/api/yelp-business/:id', async (req, res) => {
       console.warn('acquireYelpToken failed for /api/yelp-business', e);
     }
 
-    const yelpRes = await fetch(url, { headers: { Authorization: `Bearer ${YELP_API_KEY}` } });
+    let yelpRes;
+    try {
+      const start = Date.now();
+      yelpRes = await yelpBreaker.exec(() => logExternalCall({ provider: 'yelp', operation: 'rest_business', fn: () => fetch(url, { headers: { Authorization: `Bearer ${YELP_API_KEY}` } }) }));
+      const durationMs = Date.now() - start;
+      try { costTracker.record({ provider: 'yelp', model: 'rest_business', cost: 1, quotaCost: 1, durationMs, success: yelpRes && yelpRes.ok }); } catch (e) { logger.warn({ err: e }, 'costTracker.record failed'); }
+    } catch (err) {
+      logger.error({ err, route: '/api/yelp-business/:id' }, 'Yelp REST business fetch failed');
+      return res.status(502).json({ error: 'Yelp error', detail: String(err) });
+    }
     if (!yelpRes.ok) {
       const txt = await yelpRes.text();
       return res.status(502).json({ error: 'Yelp error', detail: txt });
@@ -300,7 +325,17 @@ app.get('/api/yelp-cached-search', async (req, res) => {
       console.warn('acquireYelpToken failed for /api/yelp-cached-search', e);
     }
 
-    const yRes = await fetch(url.toString(), { headers: { Authorization: `Bearer ${YELP_API_KEY}` } });
+    let yRes;
+    try {
+      const start = Date.now();
+      yRes = await yelpBreaker.exec(() => logExternalCall({ provider: 'yelp', operation: 'rest_search_cached', fn: () => fetch(url.toString(), { headers: { Authorization: `Bearer ${YELP_API_KEY}` } }) }));
+      const durationMs = Date.now() - start;
+      try { costTracker.record({ provider: 'yelp', model: 'rest_search', cost: 1, quotaCost: 1, durationMs, success: yRes && yRes.ok }); } catch (e) { logger.warn({ err: e }, 'costTracker.record failed'); }
+    } catch (err) {
+      logger.error({ err, route: '/api/yelp-cached-search' }, 'Yelp REST cached search failed');
+      const txt = String(err);
+      return res.status(502).json({ error: 'Yelp error', detail: txt });
+    }
     if (!yRes.ok) {
       const txt = await yRes.text().catch(() => null);
       return res.status(502).json({ error: 'Yelp error', detail: txt });
@@ -368,6 +403,9 @@ initializeJobs();
 // Mount POST /api/search to enqueue background discovery jobs
 const searchRoutes = require('./routes/search');
 app.use('/api/search', searchRoutes);
+
+// Attach Sentry error handler after routes (no-op when Sentry not configured)
+app.use(sentryErrorHandler());
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => logger.info({ port: PORT, env: process.env.NODE_ENV }, 'API server listening'));

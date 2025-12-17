@@ -94,3 +94,22 @@ services:
 volumes:
   pgdata:
   ollama-data:
+
+  # Optional monitoring stack (commented by default). Uncomment to run local Prometheus + Grafana.
+# prometheus:
+#   image: prom/prometheus:latest
+#   ports:
+#     - 9090:9090
+#   volumes:
+#     - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+#   depends_on:
+#     - api
+#
+# grafana:
+#   image: grafana/grafana:latest
+#   ports:
+#     - 3002:3000
+#   environment:
+#     - GF_SECURITY_ADMIN_PASSWORD=admin
+#   depends_on:
+#     - prometheus

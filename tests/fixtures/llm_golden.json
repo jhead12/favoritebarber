@@ -1,0 +1,29 @@
+
+[
+  {
+    "id": "u1",
+    "text": "Marco hooked me up with a fresh fade! Dude knows what he's doing. Chill vibe in the shop.",
+    "expected": { "names": ["Marco"], "sentiment": 0.95, "summary": "Marco hooked me up with a fresh fade! Dude knows what he's doing." }
+  },
+  {
+    "id": "u2",
+    "text": "Cut was aight, not exactly what I wanted. Barber seemed in a rush, barely talked.",
+    "expected": { "names": [], "sentiment": 0.55, "summary": "Cut was aight, not exactly what I wanted." }
+  },
+  {
+    "id": "u3",
+    "text": "Man, worst cut ever. Hairline all messed up. John gotta do better, smh.",
+    "expected": { "names": ["John"], "sentiment": 0.05, "summary": "Worst cut ever. Hairline all messed up." }
+  },
+  {
+    "id": "u4",
+    "text": "Servicio brutal, el fade quedó perfecto y la música estaba on point. Gracias!",
+    "expected": { "names": [], "sentiment": 0.9, "summary": "Servicio brutal, el fade quedó perfecto." }
+  },
+  {
+    "id": "u5",
+    "text": "Cut was decent, but left side uneven. Asked for a shape-up, ended up losing too much length.",
+    "expected": { "names": [], "sentiment": 0.6, "summary": "Cut was decent, but left side uneven." }
+  }
+]
+``

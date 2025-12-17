@@ -6,7 +6,9 @@
     "dev": "node startup.js",
     "start": "node startup.js",
     "migrate": "node migrate.js",
-    "seed": "node seed.js"
+    "seed": "node seed.js",
+    "seed:llm": "node scripts/seed_llm_testbed.js",
+    "test:llm": "node ../workers/llm/benchmark_providers.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -21,6 +23,7 @@
     "axios": "^1.4.0",
     "graphql-request": "^5.0.0",
     "pino": "^9.4.0",
-    "pino-pretty": "^11.0.0"
+    "pino-pretty": "^11.0.0",
+    "@sentry/node": "^7.0.0"
   }
 }

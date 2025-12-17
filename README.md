@@ -9,11 +9,7 @@ What this scaffold includes
 - Migration skeletons (`api/migrations/`) — SQL create table stubs
 - Dev tooling: `docker-compose.yml`, `.env.example`, and a simple `scripts/dev.sh`
 
-Next steps
 
-1. Provide API keys in `.env` and run the development environment using Podman.
-
-Podman quickstart
 - Start services:
 
 	podman compose up --build
@@ -23,7 +19,6 @@ Podman quickstart
 	podman compose down
 
 Developer helpers
-- Use the included Makefile for convenience (requires Podman):
 
 	make up
 	make migrate
@@ -33,13 +28,11 @@ Local LLM Setup (Ollama + Llama 3.2)
 
 For privacy-first text analysis (name extraction, sentiment, summarization), this repo includes integration with Ollama, a local LLM runtime. Follow these steps to enable local Llama inference:
 
-1. **Install Ollama** (macOS/Linux/Windows):
    - Download from https://ollama.ai
    - macOS: `brew install ollama` (or use the DMG installer)
    - Verify: `ollama --version`
 
 2. **Pull the Llama 3.2 (3B) model**:
-
 	ollama pull llama3.2:3b
 
    This downloads the 3B parameter model (~2GB), optimized for CPU-only inference.
@@ -51,12 +44,10 @@ For privacy-first text analysis (name extraction, sentiment, summarization), thi
    This starts the Ollama API on `http://localhost:11434` by default.
 
 4. **Set environment variables** in `.env`:
-
 	OLLAMA_ENDPOINT=http://localhost:11434
 	OLLAMA_MODEL=llama3.2:3b
 
    These are already in `.env.example`; copy to `.env` if not present.
-
 5. **Test the integration**:
 
 	cd /path/to/RateYourBarber
@@ -67,28 +58,23 @@ For privacy-first text analysis (name extraction, sentiment, summarization), thi
    - Sentiment scores (0.0–1.0) and extracted names from sample reviews
    - If Ollama is unavailable, functions gracefully fall back to heuristics
 
-6. **How it's used** in the pipeline:
    - `workers/llm/ollama_client.js` — Core Ollama interface with heuristic fallbacks
    - `workers/llm/review_parser.js` — Wrapper for batch review parsing
    - Review enrichment: The Yelp fetcher can call `parseReview()` to extract sentiment, names, and summaries from reviews without sending data to external APIs.
 
-## Critical Path & Sequencing
 
 **Goal**: Get a reviewable website with real barber data ASAP, then enhance with LLM features.
 
 1. **Phase 0** — Infrastructure baseline (logging, Redis, error tracking, dashboards)
 2. **Yelp GraphQL Phases 1-7** — Complete data ingestion pipeline (audit → workers → testing)
-   - Phase 1-2: Audit and map use cases
-   - Phase 3: Validate GraphQL client
-   - Phase 4: Update ingestion workers to fetch barber data
-   - Phase 5: Rate-limiting and caching
-   - Phase 6: DB schema for GraphQL fields
-   - Phase 7: Integration tests with recorded fixtures
+   - Phase 1-2: Audit and map use cases — not-started
+   - Phase 3: Validate GraphQL client — in-progress (see `api/yelp_graphql.js`)
+   - Phase 4: Update ingestion workers to fetch barber data — not-started
+   - Phase 6: DB schema for GraphQL fields — not-started
 3. **Basic Frontend** — Display barbers, reviews, photos (no LLM enrichment yet)
 4. **Phase A** — Data foundation (seed testbed for LLM testing)
 5. **Phase B** — LLM test harness (golden dataset, mock provider, benchmarks)
 6. **LLM Provider Expansion** — Add Ollama-based enrichment to existing reviews
-7. **Phase F.1** — Claim & Curate (high user value, unblocks barber feedback)
 8. **Phase F.2** — Trust & Verification (spam detection, verified badges)
 9. **Phase D** — MCP rollout (after Yelp + LLM stabilize)
 10. **Phase E/F.3** — Visual search, social feed (differentiators)
@@ -99,10 +85,8 @@ Critical dependencies:
 - Don't roll out MCP until Yelp GraphQL quota management is proven
 - Phase 0 infrastructure must complete before scaling any ingestion
 - Frontend display can start in parallel with Yelp Phase 6-7 (once data exists in DB)
-
     ### Todo
     - Set up other LLM Providers
-    - Anthropic
     - MCP servers
        - **Prerequisite**: Write `docs/MCP_ROADMAP.md` defining:
          - Partner personas and use cases (who will use MCP and why)
@@ -113,7 +97,6 @@ Critical dependencies:
        - Clarify partner onboarding, auth scopes, and rate-limiting ownership (MCP enforces partner quotas; workers remain independent)
        - Implement MCP telemetry hooks to track partner usage, quota consumption
        - Link to `docs/MCP_DESIGN.md` for technical implementation details
-
       ### LLM Provider Expansion TODO
       - Goal: support a broad open-source LLM ecosystem while keeping Ollama for local/dev.
       - **Strategy**: Implement ONE provider thoroughly before expanding (reduces integration risk).
@@ -138,37 +121,23 @@ Critical dependencies:
 
 If Ollama is not running, all LLM functions degrade to local heuristics (regex NER, keyword sentiment, truncation) automatically. No data is ever sent outside your machine.
 
+
+- `tests/fixtures/llm_golden.json`: a small golden dataset (5 sample reviews) to validate extraction and sentiment.
+- `workers/llm/providers/mock.js`: deterministic mock provider for CI/local testing.
+- `workers/llm/benchmark_providers.js`: simple harness that runs the golden dataset against available providers (mock by default).
+- `api/scripts/seed_llm_testbed.js`: seed helper that inserts the fixtures into the `reviews` table if a `DATABASE_URL` is configured, otherwise writes a local JSON output.
+
+
+```bash
+# write seed output or insert into DB
+# run the benchmark (uses mock provider by default)
+npm --prefix api run test:llm
+```
 2. Implement crawler logic in `workers/crawlers/yelp_fetcher.ts` and run workers.
 3. Implement API endpoints and wire database connection.
 
-## Phase 0 — Infrastructure Baseline
 
-**Goal**: Establish observability, reliability, and cost controls before scaling ingestion.
-
-**Status**: completed
-
-Completed work
-- Structured logging with correlation IDs (Pino): `api/lib/logger.js` — request middleware, correlation IDs, and external call timing helper.
-- Circuit breaker utility: `api/lib/circuitBreaker.js` — simple open/half-open/closed breaker with timeout support.
-- Cost/quota tracker: `api/lib/costTracker.js` — in-memory totals + log sink (extendable to Redis).
-- Integrated logger into the API startup and key routes (`api/index.js`) so external calls and DB errors emit structured logs.
-- Added `LOG_LEVEL`, `SENTRY_DSN`, `USE_YELP_GRAPHQL`, and `ENABLE_COST_TRACKING` to `.env.example` and `docker-compose.yml`.
-- Added `pino` and `pino-pretty` to `api/package.json` dependencies for local-friendly logs.
-
-Notes & next steps
-- Grafana/Prometheus services are still optional; I can add a commented compose snippet if you want local dashboards.
-- Next recommended changes: wrap Yelp and LLM client calls with the circuit breaker and call `costTracker.record()` on responses so quota/cost telemetry is emitted.
-
-**Files added/modified**:
-- `api/lib/logger.js`
-- `api/lib/circuitBreaker.js`
-- `api/lib/costTracker.js`
-- `api/index.js` (wired logger middleware and replaced console.* with structured logs)
-- `.env.example` (added observability envs)
-- `docker-compose.yml` (exposed new envs for api service)
-- `api/package.json` (added pino deps)
-
-**Exit criteria status**: Phase 0 items implemented and wired into API; recommend enabling Sentry and wiring the breaker into external clients next.
+Phase 0 completed: observability, circuit-breakers, and basic cost-tracking implemented (see `api/lib/logger.js`, `api/lib/circuitBreaker.js`, `api/lib/costTracker.js`).
 
 
 ## Yelp GraphQL TODOs

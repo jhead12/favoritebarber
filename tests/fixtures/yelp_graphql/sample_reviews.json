@@ -1,0 +1,35 @@
+[
+  {
+    "id": "review-1",
+    "text": "Amazing fade! John really knows what he's doing. Best barber in SF.",
+    "rating": 5,
+    "time_created": "2024-11-15T14:30:00",
+    "user": {
+      "id": "user-123",
+      "name": "Mike Johnson",
+      "image_url": "https://s3-media0.fl.yelpcdn.com/photo/user123.jpg"
+    }
+  },
+  {
+    "id": "review-2",
+    "text": "Great service and friendly staff. Would recommend to anyone looking for a clean cut.",
+    "rating": 4,
+    "time_created": "2024-11-10T10:15:00",
+    "user": {
+      "id": "user-456",
+      "name": "Sarah Chen",
+      "image_url": "https://s3-media0.fl.yelpcdn.com/photo/user456.jpg"
+    }
+  },
+  {
+    "id": "review-3",
+    "text": "Decent haircut but had to wait 30 minutes past my appointment time.",
+    "rating": 3,
+    "time_created": "2024-10-28T16:45:00",
+    "user": {
+      "id": "user-789",
+      "name": "David Martinez",
+      "image_url": null
+    }
+  }
+]

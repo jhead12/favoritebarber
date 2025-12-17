@@ -46,12 +46,33 @@ function mapGraphqlBusiness(b) {
     yelp_url: b.url || null,
     rating: b.rating || null,
     review_count: b.review_count || null,
+    price: b.price || null,
     address: buildAddressFromGraphql(b.location),
+    coordinates: b.coordinates || {},
     images,
-    categories: (b.categories || []).map(c => c.title || c),
+    categories: (b.categories || []).map(c => ({ title: c.title || c, alias: c.alias || null })),
     hours: b.hours || null,
     raw: b
   };
 }
 
-module.exports = { mapRestBusiness, mapGraphqlBusiness };
+/**
+ * Map GraphQL reviews to flat review rows
+ * @param {array} reviews - Array of GraphQL review objects
+ * @returns {array} Flat review objects with external user fields
+ */
+function mapGraphqlReviews(reviews) {
+  if (!Array.isArray(reviews)) return [];
+  return reviews.map(r => ({
+    external_id: r.id,
+    text: r.text || null,
+    rating: r.rating || null,
+    created_at: r.time_created || null,
+    external_user_id: r.user && r.user.id || null,
+    external_user_name: r.user && r.user.name || null,
+    external_user_image_url: r.user && r.user.image_url || null,
+    raw: r
+  }));
+}
+
+module.exports = { mapRestBusiness, mapGraphqlBusiness, mapGraphqlReviews };

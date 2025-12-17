@@ -32,3 +32,9 @@ The API expects the following environment variables (see `.env.example`):
 - Structured logs with correlation IDs via `api/lib/logger.js`
 - Circuit breaker for external calls in `api/lib/circuitBreaker.js`
 - Cost/quota tracking in `api/lib/costTracker.js`
+ - Optional Sentry integration via `api/lib/sentry.js` when `SENTRY_DSN` is set
+
+Local LLM test helpers:
+
+- `npm --prefix api run seed:llm` — loads `tests/fixtures/llm_golden.json` into the DB `reviews` table if `DATABASE_URL` is set, otherwise writes `api/scripts/seed_llm_testbed_output.json`.
+- `npm --prefix api run test:llm` — runs the benchmark harness at `workers/llm/benchmark_providers.js` (uses the mock provider by default).
