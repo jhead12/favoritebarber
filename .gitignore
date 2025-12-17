@@ -34,3 +34,4 @@ presentation/*.pdf
 presentation/*.pptx
 IMAGES/*.psd
 web/node_modules/
+api/.env
