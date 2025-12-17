@@ -16,6 +16,7 @@ const { Pool } = require('pg');
 const { parseReview } = require('./llm/review_parser.js');
 const { extractAdjectivesFromReview } = require('./llm/ollama_client');
 const { checkOllama } = require('./llm/ollama_client.js');
+const { dispatchWebhook } = require('../api/lib/mcpWebhooks');
 
 const db = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/rateyourbarber'
@@ -233,6 +234,8 @@ async function enrichReviews(allReviews = false) {
 
   let successCount = 0;
   let errorCount = 0;
+  const shopsTouched = new Set();
+  const barbersTouched = new Set();
 
   for (const review of reviews) {
     try {
@@ -266,6 +269,7 @@ async function enrichReviews(allReviews = false) {
       if (review.barber_id) {
         try {
           await aggregateBarberLanguages(review.barber_id);
+          barbersTouched.add(review.barber_id);
           // also aggregate adjectives
           try { await aggregateBarberAdjectives(review.barber_id); } catch (e) { console.warn('Adjective aggregation failed', e.message || e); }
           // aggregate hairstyles from reviews + images
@@ -277,6 +281,7 @@ async function enrichReviews(allReviews = false) {
         // If review isn't attributed to a specific barber, update shop-level aggregates
         try {
           await aggregateShopHairstyles(review.shop_id);
+          shopsTouched.add(review.shop_id);
         } catch (sErr) {
           console.warn('Failed to aggregate shop hairstyles for shop', review.shop_id, sErr.message || sErr);
         }
@@ -293,6 +298,34 @@ async function enrichReviews(allReviews = false) {
   console.log(`Processed: ${reviews.length}`);
   console.log(`Successful: ${successCount}`);
   console.log(`Failed: ${errorCount}`);
+
+  // Notify subscribed webhooks about enrichment completion
+  try {
+    const payload = {
+      event: 'enrichment.completed',
+      processed: reviews.length,
+      successful: successCount,
+      failed: errorCount,
+      barbers: Array.from(barbersTouched),
+      shops: Array.from(shopsTouched),
+      timestamp: new Date().toISOString()
+    };
+
+    // Find active webhooks that subscribed to enrichment.completed
+    const res = await db.query(`SELECT id, events FROM mcp_webhooks WHERE status = 'active'`);
+    for (const w of res.rows) {
+      const eventsText = (w.events || '').toString();
+      if (eventsText.indexOf('enrichment.completed') !== -1) {
+        try {
+          await dispatchWebhook(w.id, 'enrichment.completed', payload);
+        } catch (e) {
+          console.warn('Failed to dispatch enrichment webhook for', w.id, e.message || e);
+        }
+      }
+    }
+  } catch (notifyErr) {
+    console.warn('Enrichment notification failed', notifyErr.message || notifyErr);
+  }
 
   await db.end();
 }
