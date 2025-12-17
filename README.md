@@ -168,6 +168,14 @@ Critical dependencies:
 - Partner management admin UI (`web/pages/admin/partners.tsx`) - frontend needed
 - CI/CD workflow (`.github/workflows/test-mcp.yml`) - GitHub Actions setup
 
+### Frontend & Enrichment Tasks (added Dec 2025)
+
+- **Shops-level hairstyle aggregation**: compute and persist `shops.hairstyles` from `reviews` and `images` when `barber_id` is missing so shop pages reflect review-derived styles (script/aggregation job).
+- **UI tests for hairstyle visibility**: add Playwright/Vitest integration tests that assert barber and shop pages display detected hairstyles after enrichment; add CI job to run these tests.
+- **API cache-invalidation / enrichment events**: implement a small webhook/event or DB-triggered notification fired when enrichment/aggregation completes so frontend caches or clients can refresh (lightweight optional implementation using existing webhook dispatcher).
+
+These tasks have been added to the repo TODO list and tracked as pending work.
+
 **Quick Start**:
 ```bash
 # Apply MCP migration
@@ -549,6 +557,22 @@ Based on dependencies and business value, implement in this order:
 - **Test before scale**: Phase B harness prevents production LLM regressions.
 - **LLM is enhancement, not requirement**: Website should work with un-enriched reviews.
 
-If you want, I can start by generating the seed/test dataset and adding the mock provider and test harness. 
+If you want, I can start by generating the seed/test dataset and adding the mock provider and test harness.
+
+## Recent Changes (Dec 2025)
+
+- **Search UI**: Added filters, persisted last-search state, and wired filters through `web/components/SearchBar.tsx` and `web/pages/index.tsx` so saved searches and filter state are preserved.
+- **Image processing**: Improved social-photo provenance heuristics and surfaced detected hairstyles from images via `images.hairstyles` so galleries and profiles include visual style tags.
+- **Review-text enrichment**: Added `detectHairstylesFromText()` to `workers/llm/review_parser.js`; review-derived `hairstyles` are now persisted to `reviews.hairstyles` (migration `api/migrations/022_add_review_hairstyles.sql`).
+- **Attribution & aggregation**: Implemented scripts to attribute reviews to barbers (`scripts/attribute_reviews_by_name.js`, `scripts/attribute_reviews_from_text.js`) and to aggregate hairstyles at the barber and shop level (`scripts/aggregate_shops_hairstyles.js`). Also added migration `api/migrations/031_add_shops_hairstyles.sql`.
+- **Enrichment worker updates**: `workers/enrichment_worker.js` now persists hairstyles on enrichment and includes an `aggregateBarberHairstyles()` helper to recompute barber-level aggregates after enrichment.
+
+## Next Steps (recommended)
+
+- **UI tests**: Add Playwright/Vitest tests asserting that barber and shop pages display detected hairstyles after enrichment; wire to CI.
+- **Aggregation integration**: Run shop-level aggregation automatically for reviews missing `barber_id` (integrate into enrichment worker or a scheduled job).
+- **Enrichment notifications**: Add a lightweight enrichment-complete event/webhook (use existing webhook dispatcher) so frontends or caches can refresh when new enrichment data arrives.
+
+If you'd like, I can start implementing one of the next steps now — tell me which to pick (UI tests, aggregation integration, or enrichment notifications) and I'll proceed.
 
 

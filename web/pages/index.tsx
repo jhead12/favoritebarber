@@ -69,8 +69,46 @@ export default function Home() {
       }
     };
 
-    // Fetch nearby shops from Yelp (cached or live)
+    // Fetch nearby shops: prefer local DB `/api/search`, fallback to Yelp cached search.
     const fetchNearbyShops = async (lat: number, lon: number) => {
+      // Try local DB search first (faster and avoids external API when populated)
+      try {
+        const localUrl = new URL('/api/search', apiBase);
+        localUrl.searchParams.set('latitude', String(lat));
+        localUrl.searchParams.set('longitude', String(lon));
+        const localRes = await fetch(localUrl.toString());
+        if (localRes.ok) {
+          const localData = await localRes.json();
+          if (cancelled) return;
+          if (Array.isArray(localData) && localData.length > 0) {
+            const mappedLocal = localData.map((shop: any) => {
+              // support several shapes returned by server (yelp cache vs internal shops)
+              const addr = shop.address || (shop.primary_location && shop.primary_location.formatted_address) || '';
+              const distance_m = shop.distance_m || (shop.distance_m === 0 ? 0 : shop.distance || 0);
+              const trustScore = (shop.trust_score && (shop.trust_score.value || shop.trust_score)) || shop.trust_score || (shop.rating ? Math.round((shop.rating / 5) * 100) : 0);
+              const thumb = shop.thumbnail_url || shop.image_url || (shop.images && shop.images.length ? shop.images[0] : '') || '';
+              const categories = shop.top_tags || (shop.raw && (shop.raw.categories || shop.raw.tags)) || shop.categories || [];
+              return {
+                id: shop.id,
+                name: shop.name || '',
+                shop: addr,
+                distance: distance_m ? `${(Number(distance_m) / 1609.34).toFixed(1)} mi` : '',
+                trust: typeof trustScore === 'object' && trustScore.value ? Math.round(trustScore.value) : Math.round(Number(trustScore) || 0),
+                specialties: Array.isArray(categories) ? categories.slice(0,3).map((c: any) => (typeof c === 'string' ? c : (c.title || c.name || ''))).filter(Boolean) : [],
+                price: shop.price || '$$',
+                thumb,
+                entityType: 'shop',
+              };
+            });
+            setResults(mappedLocal as unknown as UiBarber[]);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('local fetchNearbyShops failed, falling back to Yelp cached search', e);
+      }
+
+      // Fallback: Yelp cached search (existing behavior)
       try {
         const url = new URL('/api/yelp-cached-search', apiBase);
         url.searchParams.set('latitude', String(lat));
@@ -102,7 +140,7 @@ export default function Home() {
               entityType: 'shop',
             };
           });
-          setResults(mapped);
+          setResults(mapped as unknown as UiBarber[]);
         }
       } catch (e) {
         console.error('fetchNearbyShops error:', e);
@@ -200,7 +238,7 @@ export default function Home() {
       const data = await res.json();
       const items = (data.results || data || []);
       const mapped = items.map((b: any) => mapApiBarberToUi(b));
-      setResults(mapped);
+      setResults(mapped as unknown as UiBarber[]);
       // debounce and batch enqueue discovery jobs for returned shops
       try {
         scheduleEnqueue(items);

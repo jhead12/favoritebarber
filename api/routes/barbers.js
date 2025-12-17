@@ -110,7 +110,7 @@ router.get('/:id', async (req, res) => {
     // Attach recent sanitized LLM-enriched comments (if available) from reviews.
     try {
       const revQ = await pool.query(
-        `SELECT id, rating, created_at, review_summary, text
+        `SELECT id, rating, created_at, review_summary, text, hairstyles
          FROM reviews
          WHERE barber_id = $1
          ORDER BY enriched_at DESC NULLS LAST, created_at DESC
@@ -125,6 +125,7 @@ router.get('/:id', async (req, res) => {
           // Prefer LLM-produced summary (sanitized). Fallback to raw text excerpt if summary missing.
           summary: r.review_summary || (r.text ? (r.text.length > 300 ? r.text.slice(0, 300) + '…' : r.text) : null),
           sanitized: !!r.review_summary,
+          hairstyles: r.hairstyles || [],
         }));
       } else {
         out.reviews = [];

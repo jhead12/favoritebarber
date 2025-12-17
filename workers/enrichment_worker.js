@@ -59,7 +59,7 @@ async function runSampleMode() {
  */
 async function fetchPendingReviews(limit = 100) {
   const query = `
-    SELECT r.id, r.barber_id, r.text, r.sentiment_score, r.created_at, s.name as shop_name
+    SELECT r.id, r.barber_id, r.shop_id, r.text, r.sentiment_score, r.created_at, s.name as shop_name
     FROM reviews r
     LEFT JOIN shops s ON r.shop_id = s.id
     WHERE r.enriched_at IS NULL
@@ -77,7 +77,7 @@ async function fetchPendingReviews(limit = 100) {
  */
 async function fetchAllReviews(limit = 100) {
   const query = `
-    SELECT r.id, r.text, r.sentiment_score, r.created_at, s.name as shop_name
+    SELECT r.id, r.shop_id, r.text, r.sentiment_score, r.created_at, s.name as shop_name
     FROM reviews r
     LEFT JOIN shops s ON r.shop_id = s.id
     WHERE r.text IS NOT NULL
@@ -87,6 +87,27 @@ async function fetchAllReviews(limit = 100) {
   `;
   const result = await db.query(query, [limit]);
   return result.rows;
+}
+
+async function aggregateShopHairstyles(shopId) {
+  // Aggregate hairstyles for a shop from reviews and images
+  const q = `
+    SELECT h, SUM(cnt) as total FROM (
+      SELECT jsonb_array_elements_text(hairstyles) as h, 1 as cnt
+      FROM reviews
+      WHERE shop_id = $1 AND hairstyles IS NOT NULL
+      UNION ALL
+      SELECT jsonb_array_elements_text(hairstyles) as h, 1 as cnt
+      FROM images
+      WHERE shop_id = $1 AND hairstyles IS NOT NULL
+    ) t
+    GROUP BY h
+    ORDER BY total DESC
+  `;
+  const res = await db.query(q, [shopId]);
+  const styles = res.rows.map(r => ({ style: r.h, count: Number(r.total) }));
+  const up = `UPDATE shops SET hairstyles = $1 WHERE id = $2`;
+  await db.query(up, [JSON.stringify(styles), shopId]);
 }
 
 /**
@@ -105,14 +126,14 @@ async function updateReviewEnrichment(reviewId, enrichmentData) {
       review_summary = $2,
       hairstyles = $3,
       enriched_at = NOW(),
-      enriched_provider = $3,
-      enriched_model = $4,
-      prefilter_flags = $5,
-      prefilter_details = $6,
-      adjectives = $7,
-      enriched_sentiment = $8,
-      sentiment_score = $9
-    WHERE id = $10;
+      enriched_provider = $4,
+      enriched_model = $5,
+      prefilter_flags = $6,
+      prefilter_details = $7,
+      adjectives = $8,
+      enriched_sentiment = $9,
+      sentiment_score = $10
+    WHERE id = $11;
   `;
   await db.query(query, [
     enrichmentData.names ? enrichmentData.names.join(', ') : null,
@@ -247,8 +268,17 @@ async function enrichReviews(allReviews = false) {
           await aggregateBarberLanguages(review.barber_id);
           // also aggregate adjectives
           try { await aggregateBarberAdjectives(review.barber_id); } catch (e) { console.warn('Adjective aggregation failed', e.message || e); }
+          // aggregate hairstyles from reviews + images
+          try { await aggregateBarberHairstyles(review.barber_id); } catch (e) { console.warn('Hairstyle aggregation failed', e.message || e); }
         } catch (agErr) {
           console.warn('Failed to aggregate barber languages for barber', review.barber_id, agErr.message || agErr);
+        }
+      } else if (review.shop_id) {
+        // If review isn't attributed to a specific barber, update shop-level aggregates
+        try {
+          await aggregateShopHairstyles(review.shop_id);
+        } catch (sErr) {
+          console.warn('Failed to aggregate shop hairstyles for shop', review.shop_id, sErr.message || sErr);
         }
       }
       console.log(`  ✓ Sentiment: ${parsed.sentiment.toFixed(2)}, Names: [${parsed.names.join(', ')}]`);

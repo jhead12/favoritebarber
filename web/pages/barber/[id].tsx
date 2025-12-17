@@ -68,7 +68,7 @@ export default function BarberProfilePage({ barberRaw, yelpError }: Props): Reac
           <p style={{ margin: 0 }}><strong>Distance:</strong> {barber.distance}</p>
           <p style={{ margin: 0 }}><strong>Trust:</strong> {barber.trust}</p>
           {(() => {
-            // Aggregate unique hairstyles from enriched images (gallery)
+            // Aggregate unique hairstyles from enriched images (gallery) and from reviews
             const allHairstyles = new Set<string>();
             const gallery = barberRaw?.gallery || [];
             gallery.forEach((img: any) => {
@@ -76,6 +76,21 @@ export default function BarberProfilePage({ barberRaw, yelpError }: Props): Reac
                 img.hairstyles.forEach((style: string) => allHairstyles.add(style));
               }
             });
+            // Also include hairstyles extracted from reviews (if present)
+            const reviews = barberRaw?.reviews || [];
+            reviews.forEach((r: any) => {
+              if (r.hairstyles && Array.isArray(r.hairstyles)) {
+                r.hairstyles.forEach((s: string) => allHairstyles.add(s));
+              }
+            });
+            // Include pre-aggregated barber-level hairstyles if present
+            if (barberRaw.hairstyles && Array.isArray(barberRaw.hairstyles)) {
+              barberRaw.hairstyles.forEach((h: any) => {
+                // support both {style,count} and string forms
+                if (typeof h === 'string') allHairstyles.add(h);
+                else if (h && h.style) allHairstyles.add(h.style);
+              });
+            }
             const hairstyles = Array.from(allHairstyles).sort();
             if (hairstyles.length > 0) {
               return (

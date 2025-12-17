@@ -69,6 +69,33 @@ router.get('/:id', async (req, res) => {
       out.barbers = [];
     }
 
+    // Attach recent sanitized LLM-enriched comments (if available) from reviews.
+    try {
+      const revQ = await pool.query(
+        `SELECT id, rating, created_at, review_summary, text, hairstyles
+         FROM reviews
+         WHERE shop_id = $1
+         ORDER BY enriched_at DESC NULLS LAST, created_at DESC
+         LIMIT 6`,
+        [s.id]
+      );
+      if (revQ.rowCount) {
+        out.reviews = revQ.rows.map((r) => ({
+          id: r.id,
+          rating: r.rating,
+          created_at: r.created_at,
+          summary: r.review_summary || (r.text ? (r.text.length > 300 ? r.text.slice(0, 300) + '…' : r.text) : null),
+          sanitized: !!r.review_summary,
+          hairstyles: r.hairstyles || [],
+        }));
+      } else {
+        out.reviews = [];
+      }
+    } catch (revErr) {
+      console.error('shops/:id reviews query error', revErr);
+      out.reviews = [];
+    }
+
     res.json(out);
   } catch (err) {
     console.error('shops/:id error', err);

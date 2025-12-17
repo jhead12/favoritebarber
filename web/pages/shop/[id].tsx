@@ -130,7 +130,7 @@ export default function ShopPage(): React.ReactElement {
       <p><strong>Trust:</strong> {barber.trust}</p>
       <p><strong>Specialties:</strong> {barber.specialties?.join ? barber.specialties.join(', ') : JSON.stringify(barber.specialties)}</p>
       {(() => {
-        // Aggregate unique hairstyles from enriched images
+        // Aggregate unique hairstyles from enriched images and reviews
         const allHairstyles = new Set<string>();
         if (gallery && gallery.length > 0) {
           // Gallery may contain raw image objects from API
@@ -139,6 +139,14 @@ export default function ShopPage(): React.ReactElement {
             if (img.hairstyles && Array.isArray(img.hairstyles)) {
               img.hairstyles.forEach((style: string) => allHairstyles.add(style));
             }
+          });
+        }
+        // include hairstyles found in scraped reviews/comments
+        if ((comments || []).length > 0) {
+          comments.forEach((c: any) => {
+            if (c.hairstyles && Array.isArray(c.hairstyles)) c.hairstyles.forEach((s: string) => allHairstyles.add(s));
+            // support nested review objects that may include summary.hairstyles etc.
+            if (c.summary && c.summary.hairstyles && Array.isArray(c.summary.hairstyles)) c.summary.hairstyles.forEach((s: string) => allHairstyles.add(s));
           });
         }
         const hairstyles = Array.from(allHairstyles).sort();
