@@ -1,8 +1,8 @@
 const { pool } = require('./db');
 
 async function seed() {
-  await pool.query("INSERT INTO barbers (name, trust_score) VALUES ($1,$2) RETURNING id", ['Sample Barber', 75]);
-  console.log('Seed complete');
+  // No sample barbers inserted by default. Use focused seed scripts if needed.
+  console.log('Seed script run — no sample barbers created');
   await pool.end();
 }
 

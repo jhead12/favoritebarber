@@ -216,42 +216,99 @@ app.get('/api/yelp-graphql/business/:id', async (req, res) => {
 });
 
 app.get('/api/search', async (req, res) => {
-  // Basic search returning seeded barbers
+  // Basic local discovery: return only enriched barbers (and nearby cached shops when coords provided)
   try {
     const { latitude, longitude } = req.query;
-    let rows;
+    const results = [];
+
+    // Helper: select barbers that have been enriched (reviews.enriched_at) or have high-relevance images
     if (latitude && longitude) {
-      // When coordinates are provided, compute distance using haversine-like formula in SQL
-      const q = `
-        SELECT b.id, b.name, b.trust_score, l.latitude AS loc_lat, l.longitude AS loc_lon, l.formatted_address,
-          (6371000 * acos(
+      const hav = `(6371000 * acos(
             cos(radians($1::double precision)) * cos(radians(l.latitude)) * cos(radians(l.longitude) - radians($2::double precision))
             + sin(radians($1::double precision)) * sin(radians(l.latitude))
-          )) AS distance_m
+          ))`;
+      const bq = `
+        SELECT b.id, b.name, b.trust_score, l.latitude AS loc_lat, l.longitude AS loc_lon, l.formatted_address,
+          ${hav} AS distance_m
         FROM barbers b
         LEFT JOIN locations l ON b.primary_location_id = l.id
+        WHERE EXISTS (SELECT 1 FROM reviews r WHERE r.barber_id = b.id AND r.enriched_at IS NOT NULL)
+           OR EXISTS (SELECT 1 FROM images i WHERE i.barber_id = b.id AND COALESCE(i.relevance_score,0) > 0.5)
         ORDER BY distance_m NULLS LAST
         LIMIT 50
       `;
-      const qr = await pool.query(q, [Number(latitude), Number(longitude)]);
-      rows = qr.rows;
+      const qr = await pool.query(bq, [Number(latitude), Number(longitude)]);
+      for (const r of qr.rows) {
+        results.push({
+          id: r.id,
+          name: r.name,
+          primary_location: r.formatted_address ? { latitude: r.loc_lat, longitude: r.loc_lon, formatted_address: r.formatted_address } : { latitude: 0, longitude: 0, formatted_address: '' },
+          distance_m: r.distance_m ? Number(r.distance_m) : 0,
+          trust_score: { value: Number(r.trust_score) || 0, components: {} },
+          thumbnail_url: '',
+          top_tags: [],
+          snippet: '',
+        });
+      }
+
+      // Also include cached nearby shops from yelp_businesses (if present in DB)
+      try {
+        const shopQ = `
+          SELECT id, name, latitude, longitude, address, rating, images, raw,
+            (6371000 * acos(
+              cos(radians($1::double precision)) * cos(radians(latitude)) * cos(radians(longitude) - radians($2::double precision))
+              + sin(radians($1::double precision)) * sin(radians(latitude))
+            )) AS distance_m
+          FROM yelp_businesses
+          WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+          HAVING (6371000 * acos(
+              cos(radians($1::double precision)) * cos(radians(latitude)) * cos(radians(longitude) - radians($2::double precision))
+              + sin(radians($1::double precision)) * sin(radians(latitude))
+            )) <= $3
+          ORDER BY distance_m ASC
+          LIMIT 50
+        `;
+        const radius_m = Number(req.query.radius_m || 5000);
+        const sq = await pool.query(shopQ, [Number(latitude), Number(longitude), radius_m]);
+        if (sq.rows && sq.rows.length) {
+          for (const s of sq.rows) {
+            const imageUrl = (s.images && s.images.length) ? s.images[0] : (s.raw && s.raw.image_url) || null;
+            results.push({
+              id: s.id,
+              name: s.name,
+              rating: s.rating || null,
+              distance_m: Number(s.distance_m || 0),
+              address: s.address || (s.raw && s.raw.location && s.raw.location.display_address ? s.raw.location.display_address.join(', ') : ''),
+              image_url: imageUrl,
+              raw: s.raw || null,
+            });
+          }
+        }
+      } catch (e) {
+        logger.warn({ err: e }, 'failed to include cached shops in /api/search');
+      }
     } else {
-      const qr = await pool.query('SELECT b.id, b.name, b.trust_score, l.latitude AS loc_lat, l.longitude AS loc_lon, l.formatted_address FROM barbers b LEFT JOIN locations l ON b.primary_location_id = l.id LIMIT 50');
-      rows = qr.rows;
+      // No coords provided: return enriched barbers (first 50)
+      const qr = await pool.query(`SELECT b.id, b.name, b.trust_score, l.latitude AS loc_lat, l.longitude AS loc_lon, l.formatted_address
+        FROM barbers b LEFT JOIN locations l ON b.primary_location_id = l.id
+        WHERE EXISTS (SELECT 1 FROM reviews r WHERE r.barber_id = b.id AND r.enriched_at IS NOT NULL)
+           OR EXISTS (SELECT 1 FROM images i WHERE i.barber_id = b.id AND COALESCE(i.relevance_score,0) > 0.5)
+        LIMIT 50`);
+      for (const r of qr.rows) {
+        results.push({
+          id: r.id,
+          name: r.name,
+          primary_location: r.formatted_address ? { latitude: r.loc_lat, longitude: r.loc_lon, formatted_address: r.formatted_address } : { latitude: 0, longitude: 0, formatted_address: '' },
+          distance_m: 0,
+          trust_score: { value: Number(r.trust_score) || 0, components: {} },
+          thumbnail_url: '',
+          top_tags: [],
+          snippet: '',
+        });
+      }
     }
 
-    const results = rows.map(r => ({
-      id: r.id,
-      name: r.name,
-      primary_location: r.formatted_address ? { latitude: r.loc_lat, longitude: r.loc_lon, formatted_address: r.formatted_address } : { latitude: 0, longitude: 0, formatted_address: '' },
-      distance_m: r.distance_m ? Number(r.distance_m) : 0,
-      // PG returns NUMERIC as string; ensure numeric type for frontend consumers
-      trust_score: { value: Number(r.trust_score) || 0, components: {} },
-      thumbnail_url: '',
-      top_tags: [],
-      snippet: ''
-    }));
-    res.json(results);
+    return res.json(results);
   } catch (err) {
     logger.error({ err, route: '/api/search' }, 'DB error');
     res.status(500).json({ error: 'DB error' });

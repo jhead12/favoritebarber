@@ -6,46 +6,12 @@ const AdminReconciler = dynamic(() => import('../components/AdminReconciler'), {
 import { mapApiBarberToUi, UiBarber } from '../lib/adapters';
 import { saveLocation, loadLocation } from '../lib/location';
 
-const MOCK_SHOPS = [
-  {
-    id: 'shop1',
-    name: 'Mission Cuts',
-    shop: '123 Mission St, SF',
-    distance: '0.4 mi',
-    trust: 92,
-    specialties: ['Fade', 'Beard trim', 'Hot towel shave'],
-    price: '$$',
-    thumb: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=400&q=60',
-    entityType: 'shop',
-  },
-  {
-    id: 'shop2',
-    name: 'SoMa Barber Co.',
-    shop: '456 Howard St, SF',
-    distance: '1.1 mi',
-    trust: 85,
-    specialties: ['Taper', 'Textured crop', 'Pompadour'],
-    price: '$$',
-    thumb: 'https://images.unsplash.com/photo-1503951914909-04e7d77c5cde?auto=format&fit=crop&w=400&q=60',
-    entityType: 'shop',
-  },
-  {
-    id: 'shop3',
-    name: 'Castro Clippers',
-    shop: '789 Castro St, SF',
-    distance: '2.3 mi',
-    trust: 77,
-    specialties: ['Buzz', 'Crew', 'Line-up'],
-    price: '$$',
-    thumb: 'https://images.unsplash.com/photo-1503951914646-5700dea92f62?auto=format&fit=crop&w=400&q=60',
-    entityType: 'shop',
-  },
-];
+// Default: no sample/mock shops shown; frontend will fetch local enriched barbers and shops from the API.
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
-  const [results, setResults] = useState<UiBarber[]>(MOCK_SHOPS as unknown as UiBarber[]);
+  const [results, setResults] = useState<UiBarber[]>([] as unknown as UiBarber[]);
   const [latestPositive, setLatestPositive] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
