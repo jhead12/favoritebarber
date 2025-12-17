@@ -3,9 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3001",
+    "dev:local": "next dev -p 3001",
     "build": "next build",
-    "start": "next start"
+    "start": "next start -p 3001",
+    "test:unit": "vitest",
+    "test:e2e": "npx playwright test",
+    "test": "vitest && npx playwright test"
   },
   "dependencies": {
     "chart.js": "^4.5.1",
@@ -16,6 +20,8 @@
   "devDependencies": {
     "@types/node": "24.10.1",
     "@types/react": "19.2.7",
-    "typescript": "5.9.3"
+    "jsdom": "^27.0.1",
+    "typescript": "5.9.3",
+    "vitest": "^1.0.0"
   }
 }

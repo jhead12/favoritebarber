@@ -1,15 +1,46 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
-const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { requireAuth, requireAdmin, requireAdminOrAuth } = require('../middleware/auth');
 const multer = require('multer');
 const os = require('os');
 const path = require('path');
 const { parseUploadFile } = require('../lib/ingestUpload');
 const { verifyCandidate } = require('../lib/llmVerifier');
 const { createCandidate } = require('../models/socialProfile');
+const axios = require('axios');
 
 const upload = multer({ dest: path.join(os.tmpdir(), 'ryb-uploads') });
+
+// Reconciliation trigger (admin only): attempt to reconcile discovered social profiles
+router.post('/reconcile-socials', requireAdminOrAuth, async (req, res) => {
+  try {
+    const { limit } = req.body || {};
+    // lazy-load reconciler to avoid worker deps when admin not used
+    const reconciler = require('../../workers/barber_reconciler');
+    const out = await reconciler.reconcile({ limit: Number(limit) || undefined });
+    res.json({ ok: true, processed: out.length, results: out });
+  } catch (e) {
+    console.error('reconcile-socials error', e);
+    res.status(500).json({ error: 'server_error', detail: String(e && e.message ? e.message : e) });
+  }
+});
+
+// GET /api/admin/ollama-status
+// Returns basic Ollama health and whether the configured model is available
+router.get('/ollama-status', requireAdminOrAuth, async (req, res) => {
+  const endpoint = process.env.OLLAMA_ENDPOINT || 'http://localhost:11434';
+  const model = process.env.OLLAMA_MODEL || null;
+  const timeout = Number(process.env.OLLAMA_TIMEOUT || 5000);
+  try {
+    const tagsRes = await axios.get(`${endpoint.replace(/\/$/, '')}/api/tags`, { timeout });
+    const tags = tagsRes.data;
+    const modelAvailable = model ? JSON.stringify(tags).includes(model) : false;
+    return res.json({ ok: true, endpoint, reachable: true, tags, model, modelAvailable });
+  } catch (e) {
+    return res.status(502).json({ ok: false, endpoint, reachable: false, error: String(e.message || e), model });
+  }
+});
 
 // GET /api/admin/data-status
 router.get('/data-status', async (req, res) => {

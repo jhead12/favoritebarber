@@ -1,0 +1,11 @@
+
+🧪 OPENAI (ChatGPT) vs OLLAMA COMPARISON TEST
+
+✓ Ollama is reachable at http://localhost:11434
+
+================================================================================
+Testing: OLLAMA (LLAMA3.2:3B)
+================================================================================
+
+Test #1: Clear positive with barber name
+Review: "I went to Budget Barbers yesterday and asked for a fade. John did an absolutely ..."

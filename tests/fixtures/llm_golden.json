@@ -1,0 +1,253 @@
+
+[
+  {
+    "id": "u1",
+    "text": "Marco hooked me up with a fresh fade! Dude knows what he's doing. Chill vibe in the shop.",
+    "expected": { "names": ["Marco"], "sentiment": 0.95, "summary": "Marco hooked me up with a fresh fade! Dude knows what he's doing." }
+  },
+  {
+    "id": "u2",
+    "text": "Cut was aight, not exactly what I wanted. Barber seemed in a rush, barely talked.",
+    "expected": { "names": [], "sentiment": 0.55, "summary": "Cut was aight, not exactly what I wanted." }
+  },
+  {
+    "id": "u3",
+    "text": "Man, worst cut ever. Hairline all messed up. John gotta do better, smh.",
+    "expected": { "names": ["John"], "sentiment": 0.05, "summary": "Worst cut ever. Hairline all messed up." }
+  },
+  {
+    "id": "u4",
+    "text": "Servicio brutal, el fade quedó perfecto y la música estaba on point. Gracias!",
+    "expected": { "names": [], "sentiment": 0.9, "summary": "Servicio brutal, el fade quedó perfecto." }
+  },
+  {
+    "id": "u5",
+    "text": "Cut was decent, but left side uneven. Asked for a shape-up, ended up losing too much length.",
+    "expected": { "names": [], "sentiment": 0.6, "summary": "Cut was decent, but left side uneven." }
+  },
+  {
+    "id": "u6",
+    "text": "BEST BARBER IN TOWN!!! CARLOS AND MIKE ARE ABSOLUTE LEGENDS!!! 🔥🔥🔥",
+    "expected": { "names": ["Carlos", "Mike"], "sentiment": 1.0, "summary": "Best barber in town! Carlos and Mike are absolute legends!" }
+  },
+  {
+    "id": "u7",
+    "text": "terrible experience never coming back again total waste of money",
+    "expected": { "names": [], "sentiment": 0.0, "summary": "Terrible experience, never coming back." }
+  },
+  {
+    "id": "u8",
+    "text": "Tommy gave me the cleanest taper I've ever had. The line-up was crispy and the beard trim was on point. Shop atmosphere is dope, good music, and everyone's friendly. Been going to Tommy for 3 years now and he never disappoints. Highly recommend if you're in the area!",
+    "expected": { "names": ["Tommy"], "sentiment": 0.98, "summary": "Tommy gave me the cleanest taper with crispy line-up and perfect beard trim." }
+  },
+  {
+    "id": "u9",
+    "text": "Solid spot. Gets busy on weekends tho.",
+    "expected": { "names": [], "sentiment": 0.75, "summary": "Solid spot but busy on weekends." }
+  },
+  {
+    "id": "u10",
+    "text": "Mi pana Luis es el mejor! Siempre me deja con el fade perfecto. La barbería tiene buen ambiente y todos hablan español. Precios justos también.",
+    "expected": { "names": ["Luis"], "sentiment": 0.95, "summary": "Luis es el mejor, fade perfecto y buen ambiente." }
+  },
+  {
+    "id": "u11",
+    "text": "😍😍😍 Amazing cut! 💯 Will definitely be back! 🔥",
+    "expected": { "names": [], "sentiment": 0.95, "summary": "Amazing cut, will definitely be back!" }
+  },
+  {
+    "id": "u12",
+    "text": "Asked for a mid fade got a low fade. Asked for it to be fixed, barber got attitude. Won't be returning.",
+    "expected": { "names": [], "sentiment": 0.15, "summary": "Asked for mid fade, got low fade, barber had attitude." }
+  },
+  {
+    "id": "u13",
+    "text": "The shop looks nice inside",
+    "expected": { "names": [], "sentiment": 0.7, "summary": "The shop looks nice inside." }
+  },
+  {
+    "id": "u14",
+    "text": "Robert and James both work here and they're both skilled. I usually see Robert but if he's busy James is just as good. Can't go wrong with either one.",
+    "expected": { "names": ["Robert", "James"], "sentiment": 0.9, "summary": "Robert and James are both skilled, can't go wrong with either." }
+  },
+  {
+    "id": "u15",
+    "text": "Overpriced for what you get tbh. Nothing special.",
+    "expected": { "names": [], "sentiment": 0.35, "summary": "Overpriced, nothing special." }
+  },
+  {
+    "id": "u16",
+    "text": "Clean shop, professional service, reasonable prices. What more can you ask for? Been a regular for 2 years.",
+    "expected": { "names": [], "sentiment": 0.9, "summary": "Clean shop, professional service, reasonable prices." }
+  },
+  {
+    "id": "u17",
+    "text": "Had to wait 45 minutes past my appointment time. When I finally got in the chair the cut was rushed. Not acceptable.",
+    "expected": { "names": [], "sentiment": 0.2, "summary": "Waited 45 minutes past appointment, cut was rushed." }
+  },
+  {
+    "id": "u18",
+    "text": "💈💈💈 FIRE CUTS HERE 🔥🔥🔥 ASK FOR RICO 💯💯💯",
+    "expected": { "names": ["Rico"], "sentiment": 0.95, "summary": "Fire cuts here, ask for Rico!" }
+  },
+  {
+    "id": "u19",
+    "text": "It's ok I guess. Not bad but not great either. Might try somewhere else next time.",
+    "expected": { "names": [], "sentiment": 0.5, "summary": "It's ok, not bad but not great either." }
+  },
+  {
+    "id": "u20",
+    "text": "Been coming here since I was a kid. Antonio has been cutting my hair for 15 years. He knows exactly what I like and always delivers. This place is like family to me.",
+    "expected": { "names": ["Antonio"], "sentiment": 1.0, "summary": "Antonio has been cutting my hair for 15 years, always delivers." }
+  },
+  {
+    "id": "u21",
+    "text": "First time here and definitely my last. Barber didn't listen to what I wanted and just did whatever. Left with a haircut I didn't ask for.",
+    "expected": { "names": [], "sentiment": 0.1, "summary": "First and last time, barber didn't listen to what I wanted." }
+  },
+  {
+    "id": "u22",
+    "text": "Free haircut scam dont fall for it they will rob you blind!!!",
+    "expected": { "names": [], "sentiment": 0.0, "summary": "Free haircut scam, don't fall for it." }
+  },
+  {
+    "id": "u23",
+    "text": "The barber David is professional and skilled. Clean workspace, good hygiene practices. I appreciate the attention to detail.",
+    "expected": { "names": ["David"], "sentiment": 0.85, "summary": "David is professional and skilled with attention to detail." }
+  },
+  {
+    "id": "u24",
+    "text": "Meh.",
+    "expected": { "names": [], "sentiment": 0.5, "summary": "Meh." }
+  },
+  {
+    "id": "u25",
+    "text": "I walked in and asked for a simple buzz cut. 20 minutes later I had the worst haircut of my life. Uneven, patchy, just terrible.",
+    "expected": { "names": [], "sentiment": 0.05, "summary": "Worst haircut of my life - uneven and patchy." }
+  },
+  {
+    "id": "u26",
+    "text": "Great experience overall! The shop was clean, the wait wasn't too long, and my barber (I think his name was Steve or Steven?) did a fantastic job. Definitely coming back!",
+    "expected": { "names": ["Steve", "Steven"], "sentiment": 0.95, "summary": "Great experience, clean shop, barber did fantastic job." }
+  },
+  {
+    "id": "u27",
+    "text": "Average cut at best. Nothing to write home about.",
+    "expected": { "names": [], "sentiment": 0.6, "summary": "Average cut, nothing special." }
+  },
+  {
+    "id": "u28",
+    "text": "I've been to dozens of barbershops and this is hands down the best. Alex is a true artist. He takes his time and makes sure everything is perfect. The shop is immaculate and the vibe is always positive. Can't recommend this place enough!",
+    "expected": { "names": ["Alex"], "sentiment": 1.0, "summary": "Best barbershop, Alex is a true artist who takes his time." }
+  },
+  {
+    "id": "u29",
+    "text": "Called to make an appointment, they said come in at 3pm. Showed up at 3pm and they said they don't take appointments. Wasted trip.",
+    "expected": { "names": [], "sentiment": 0.15, "summary": "Showed up for appointment, they don't take appointments." }
+  },
+  {
+    "id": "u30",
+    "text": "Decent fade, good price, friendly staff. I'll be back.",
+    "expected": { "names": [], "sentiment": 0.8, "summary": "Decent fade, good price, friendly staff." }
+  },
+  {
+    "id": "u31",
+    "text": "Real talk this place is trash don't waste your time fam",
+    "expected": { "names": [], "sentiment": 0.0, "summary": "Don't waste your time." }
+  },
+  {
+    "id": "u32",
+    "text": "Victor hooked it up! Best shape-up I've gotten in years. He's got that attention to detail that's hard to find these days.",
+    "expected": { "names": ["Victor"], "sentiment": 0.95, "summary": "Victor gave best shape-up with great attention to detail." }
+  },
+  {
+    "id": "u33",
+    "text": "It was fine.",
+    "expected": { "names": [], "sentiment": 0.65, "summary": "It was fine." }
+  },
+  {
+    "id": "u34",
+    "text": "Went in for a simple trim. Barber barely spoke English and completely misunderstood what I wanted. Ended up with way too much taken off.",
+    "expected": { "names": [], "sentiment": 0.25, "summary": "Barber misunderstood, took off too much hair." }
+  },
+  {
+    "id": "u35",
+    "text": "This is the type of place where you become a regular. Everyone knows your name, remembers how you like your cut. Marcus, Tony, and Big E all do great work.",
+    "expected": { "names": ["Marcus", "Tony"], "sentiment": 0.95, "summary": "Great place where everyone knows your name and remembers your cut." }
+  },
+  {
+    "id": "u36",
+    "text": "Showed up on time for my appointment with Jake. He was running 30 min late but apologized and gave me a discount. Cut was great, very professional about the delay.",
+    "expected": { "names": ["Jake"], "sentiment": 0.8, "summary": "Jake ran late but apologized, gave discount, cut was great." }
+  },
+  {
+    "id": "u37",
+    "text": "Never again. Worst service ever.",
+    "expected": { "names": [], "sentiment": 0.0, "summary": "Never again, worst service ever." }
+  },
+  {
+    "id": "u38",
+    "text": "Pretty good spot. Gets the job done. No complaints.",
+    "expected": { "names": [], "sentiment": 0.75, "summary": "Pretty good spot, no complaints." }
+  },
+  {
+    "id": "u39",
+    "text": "Been seeing Chen for my cuts and he's consistently excellent. Never had a bad experience here. The shop is always clean and the prices are fair.",
+    "expected": { "names": ["Chen"], "sentiment": 0.9, "summary": "Chen is consistently excellent, clean shop, fair prices." }
+  },
+  {
+    "id": "u40",
+    "text": "Walked in without appointment, they fit me in right away. Quick, professional service. Happy with the result.",
+    "expected": { "names": [], "sentiment": 0.85, "summary": "Quick professional service, fit me in without appointment." }
+  },
+  {
+    "id": "u41",
+    "text": "Expensive and not worth it. I've had better cuts for half the price elsewhere.",
+    "expected": { "names": [], "sentiment": 0.25, "summary": "Expensive and not worth it." }
+  },
+  {
+    "id": "u42",
+    "text": "If you want a proper fade go see Malik. Dude is an absolute wizard with the clippers. My go-to spot every time.",
+    "expected": { "names": ["Malik"], "sentiment": 0.98, "summary": "Malik is a wizard with clippers, my go-to spot." }
+  },
+  {
+    "id": "u43",
+    "text": "Soy cliente desde hace 5 años. Javier siempre me atiende bien y el corte queda perfecto. Ambiente familiar y precios buenos. Recomendado 100%.",
+    "expected": { "names": ["Javier"], "sentiment": 0.95, "summary": "Cliente desde hace 5 años, Javier atiende bien, ambiente familiar." }
+  },
+  {
+    "id": "u44",
+    "text": "Barber was on his phone the whole time. Barely paid attention to what he was doing. Unprofessional.",
+    "expected": { "names": [], "sentiment": 0.2, "summary": "Barber was on phone, unprofessional." }
+  },
+  {
+    "id": "u45",
+    "text": "Standard barbershop. Nothing fancy but they get the job done at a fair price.",
+    "expected": { "names": [], "sentiment": 0.7, "summary": "Standard barbershop, fair price." }
+  },
+  {
+    "id": "u46",
+    "text": "🔥🔥🔥 IF YOU WANT THE BEST FADE IN THE CITY GO SEE MARCUS 💯💯💯 NO CAP 🙏🙏🙏",
+    "expected": { "names": ["Marcus"], "sentiment": 1.0, "summary": "Best fade in the city, go see Marcus!" }
+  },
+  {
+    "id": "u47",
+    "text": "Honestly wasn't impressed. The cut was okay but I've definitely had better. Probably won't return.",
+    "expected": { "names": [], "sentiment": 0.45, "summary": "Cut was okay but I've had better." }
+  },
+  {
+    "id": "u48",
+    "text": "Outstanding service from start to finish. Andre took his time, asked questions about what I wanted, and executed perfectly. This is now my regular spot.",
+    "expected": { "names": ["Andre"], "sentiment": 0.98, "summary": "Outstanding service, Andre took time and executed perfectly." }
+  },
+  {
+    "id": "u49",
+    "text": "Dirty shop, rude staff, mediocre cut. Save yourself the trouble and go elsewhere.",
+    "expected": { "names": [], "sentiment": 0.1, "summary": "Dirty shop, rude staff, mediocre cut." }
+  },
+  {
+    "id": "u50",
+    "text": "Good barbershop with skilled barbers. I see Ray and he always does a solid job. Wait times can be long on weekends but it's worth it.",
+    "expected": { "names": ["Ray"], "sentiment": 0.85, "summary": "Ray does solid job, wait times can be long on weekends." }
+  }
+]

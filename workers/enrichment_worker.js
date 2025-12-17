@@ -16,6 +16,7 @@ const { Pool } = require('pg');
 const { parseReview } = require('./llm/review_parser.js');
 const { extractAdjectivesFromReview } = require('./llm/ollama_client');
 const { checkOllama } = require('./llm/ollama_client.js');
+const { dispatchWebhook } = require('../api/lib/mcpWebhooks');
 
 const db = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/rateyourbarber'
@@ -59,7 +60,7 @@ async function runSampleMode() {
  */
 async function fetchPendingReviews(limit = 100) {
   const query = `
-    SELECT r.id, r.barber_id, r.text, r.sentiment_score, r.created_at, s.name as shop_name
+    SELECT r.id, r.barber_id, r.shop_id, r.text, r.sentiment_score, r.created_at, s.name as shop_name
     FROM reviews r
     LEFT JOIN shops s ON r.shop_id = s.id
     WHERE r.enriched_at IS NULL
@@ -77,7 +78,7 @@ async function fetchPendingReviews(limit = 100) {
  */
 async function fetchAllReviews(limit = 100) {
   const query = `
-    SELECT r.id, r.text, r.sentiment_score, r.created_at, s.name as shop_name
+    SELECT r.id, r.shop_id, r.text, r.sentiment_score, r.created_at, s.name as shop_name
     FROM reviews r
     LEFT JOIN shops s ON r.shop_id = s.id
     WHERE r.text IS NOT NULL
@@ -89,26 +90,58 @@ async function fetchAllReviews(limit = 100) {
   return result.rows;
 }
 
+async function aggregateShopHairstyles(shopId) {
+  // Aggregate hairstyles for a shop from reviews and images
+  const q = `
+    SELECT h, SUM(cnt) as total FROM (
+      SELECT jsonb_array_elements_text(hairstyles) as h, 1 as cnt
+      FROM reviews
+      WHERE shop_id = $1 AND hairstyles IS NOT NULL
+      UNION ALL
+      SELECT jsonb_array_elements_text(hairstyles) as h, 1 as cnt
+      FROM images
+      WHERE shop_id = $1 AND hairstyles IS NOT NULL
+    ) t
+    GROUP BY h
+    ORDER BY total DESC
+  `;
+  const res = await db.query(q, [shopId]);
+  const styles = res.rows.map(r => ({ style: r.h, count: Number(r.total) }));
+  const up = `UPDATE shops SET hairstyles = $1 WHERE id = $2`;
+  await db.query(up, [JSON.stringify(styles), shopId]);
+}
+
 /**
  * Persist enriched review data
  */
 async function updateReviewEnrichment(reviewId, enrichmentData) {
+  const provider = process.env.LLM_PROVIDER || 'ollama';
+  const model = provider === 'ollama' 
+    ? (process.env.OLLAMA_MODEL || 'llama3.2:3b')
+    : (process.env.OPENAI_MODEL || 'gpt-4o-mini');
+  
   const query = `
     UPDATE reviews
     SET
       extracted_names = $1,
       review_summary = $2,
+      hairstyles = $3,
       enriched_at = NOW(),
-      prefilter_flags = $3,
-      prefilter_details = $4,
-      adjectives = $5,
-      enriched_sentiment = $6,
-      sentiment_score = $7
-    WHERE id = $8;
+      enriched_provider = $4,
+      enriched_model = $5,
+      prefilter_flags = $6,
+      prefilter_details = $7,
+      adjectives = $8,
+      enriched_sentiment = $9,
+      sentiment_score = $10
+    WHERE id = $11;
   `;
   await db.query(query, [
     enrichmentData.names ? enrichmentData.names.join(', ') : null,
     enrichmentData.summary || null,
+    enrichmentData.hairstyles ? JSON.stringify(enrichmentData.hairstyles) : null,
+    provider,
+    model,
     enrichmentData.prefilter ? JSON.stringify(enrichmentData.prefilter.flags || {}) : null,
     enrichmentData.prefilter ? JSON.stringify(enrichmentData.prefilter.details || {}) : null,
     enrichmentData.adjectives ? JSON.stringify(enrichmentData.adjectives) : null,
@@ -153,6 +186,27 @@ async function aggregateBarberAdjectives(barberId) {
   await db.query(up, [JSON.stringify(adjs), barberId]);
 }
 
+async function aggregateBarberHairstyles(barberId) {
+  // Aggregate hairstyles from both reviews and images for the barber
+  const q = `
+    SELECT h, SUM(cnt) as total FROM (
+      SELECT jsonb_array_elements_text(hairstyles) as h, 1 as cnt
+      FROM reviews
+      WHERE barber_id = $1 AND hairstyles IS NOT NULL
+      UNION ALL
+      SELECT jsonb_array_elements_text(hairstyles) as h, 1 as cnt
+      FROM images
+      WHERE barber_id = $1 AND hairstyles IS NOT NULL
+    ) t
+    GROUP BY h
+    ORDER BY total DESC
+  `;
+  const res = await db.query(q, [barberId]);
+  const styles = res.rows.map(r => ({ style: r.h, count: Number(r.total) }));
+  const up = `UPDATE barbers SET hairstyles = $1 WHERE id = $2`;
+  await db.query(up, [JSON.stringify(styles), barberId]);
+}
+
 /**
  * Main enrichment loop
  */
@@ -180,6 +234,8 @@ async function enrichReviews(allReviews = false) {
 
   let successCount = 0;
   let errorCount = 0;
+  const shopsTouched = new Set();
+  const barbersTouched = new Set();
 
   for (const review of reviews) {
     try {
@@ -213,10 +269,21 @@ async function enrichReviews(allReviews = false) {
       if (review.barber_id) {
         try {
           await aggregateBarberLanguages(review.barber_id);
+          barbersTouched.add(review.barber_id);
           // also aggregate adjectives
           try { await aggregateBarberAdjectives(review.barber_id); } catch (e) { console.warn('Adjective aggregation failed', e.message || e); }
+          // aggregate hairstyles from reviews + images
+          try { await aggregateBarberHairstyles(review.barber_id); } catch (e) { console.warn('Hairstyle aggregation failed', e.message || e); }
         } catch (agErr) {
           console.warn('Failed to aggregate barber languages for barber', review.barber_id, agErr.message || agErr);
+        }
+      } else if (review.shop_id) {
+        // If review isn't attributed to a specific barber, update shop-level aggregates
+        try {
+          await aggregateShopHairstyles(review.shop_id);
+          shopsTouched.add(review.shop_id);
+        } catch (sErr) {
+          console.warn('Failed to aggregate shop hairstyles for shop', review.shop_id, sErr.message || sErr);
         }
       }
       console.log(`  ✓ Sentiment: ${parsed.sentiment.toFixed(2)}, Names: [${parsed.names.join(', ')}]`);
@@ -231,6 +298,34 @@ async function enrichReviews(allReviews = false) {
   console.log(`Processed: ${reviews.length}`);
   console.log(`Successful: ${successCount}`);
   console.log(`Failed: ${errorCount}`);
+
+  // Notify subscribed webhooks about enrichment completion
+  try {
+    const payload = {
+      event: 'enrichment.completed',
+      processed: reviews.length,
+      successful: successCount,
+      failed: errorCount,
+      barbers: Array.from(barbersTouched),
+      shops: Array.from(shopsTouched),
+      timestamp: new Date().toISOString()
+    };
+
+    // Find active webhooks that subscribed to enrichment.completed
+    const res = await db.query(`SELECT id, events FROM mcp_webhooks WHERE status = 'active'`);
+    for (const w of res.rows) {
+      const eventsText = (w.events || '').toString();
+      if (eventsText.indexOf('enrichment.completed') !== -1) {
+        try {
+          await dispatchWebhook(w.id, 'enrichment.completed', payload);
+        } catch (e) {
+          console.warn('Failed to dispatch enrichment webhook for', w.id, e.message || e);
+        }
+      }
+    }
+  } catch (notifyErr) {
+    console.warn('Enrichment notification failed', notifyErr.message || notifyErr);
+  }
 
   await db.end();
 }

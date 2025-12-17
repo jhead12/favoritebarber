@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { mapApiBarberToUi, UiBarber } from '../../../lib/adapters';
 import { setLastVisitedBarber } from '../../../lib/lastVisited';
 
-export default function BarberPhotosPage(): JSX.Element {
+export default function BarberPhotosPage(): React.ReactElement {
   const router = useRouter();
   const { id } = router.query;
   const [barber, setBarber] = useState<UiBarber | null>(null);

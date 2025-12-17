@@ -4,8 +4,18 @@ let client = null;
 function init() {
   if (client) return client;
   const url = process.env.REDIS_URL || process.env.REDIS || null;
-  if (!url) return null;
-  client = new Redis(url);
+  if (url) {
+    client = new Redis(url);
+  } else {
+    const host = process.env.REDIS_HOST || process.env.REDIS || '127.0.0.1';
+    const port = process.env.REDIS_PORT ? Number(process.env.REDIS_PORT) : 6379;
+    const db = process.env.REDIS_DB ? Number(process.env.REDIS_DB) : 0;
+    try {
+      client = new Redis({ host, port, db });
+    } catch (e) {
+      return null;
+    }
+  }
   client.on('error', (err) => console.warn('Redis error', err));
   return client;
 }

@@ -1,16 +1,19 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import LastVisitedBarber from './LastVisitedBarber';
 
-export default function Header(): JSX.Element {
+export default function Header(): React.ReactElement {
   return (
     <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid #e6eef9', background: 'linear-gradient(90deg,#fff,#f8fafc)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
         <Link href="/" style={{ textDecoration: 'none', color: '#0f172a' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: '#0ea5e9', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 700 }}>RYB</div>
+            <div style={{ width: 36, height: 36, borderRadius: 8, overflow: 'hidden', display: 'inline-block' }}>
+              <Image src="/logo.png" alt="Favorite Barber Logo" width={36} height={36} style={{ objectFit: 'cover' }} />
+            </div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700 }}>Rate Your Barber</div>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>Favorite Barber</div>
               <div style={{ fontSize: 12, color: '#475569' }}>Find trusted barbers nearby</div>
             </div>
           </div>

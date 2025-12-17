@@ -55,7 +55,9 @@ async function analyzeWithGoogle(url) {
 
 function heuristicAnalyze(url, source) {
   const lower = (url || '').toLowerCase();
-  const analysis = { provenance_score: source === 'yelp' ? 0.25 : 0.05, objects: {}, faces: { count: 0, score: 0 }, ocr: { text: null, score: 0 }, p_hash: `phash-${Math.random().toString(36).slice(2,9)}` };
+  // Give higher provenance to images pulled from social media (more likely user-generated)
+  const provenance_score = source === 'social' ? 0.5 : (source === 'yelp' ? 0.25 : 0.05);
+  const analysis = { provenance_score, objects: {}, faces: { count: 0, score: 0 }, ocr: { text: null, score: 0 }, p_hash: `phash-${Math.random().toString(36).slice(2,9)}` };
   if (lower.includes('barber') || lower.includes('hair') || lower.includes('shop')) {
     analysis.objects.barber_chair = 0.9;
     analysis.objects.scissors = 0.3;
@@ -75,7 +77,11 @@ function heuristicAnalyze(url, source) {
 }
 
 async function persistAnalysis(imageId, rawAnalysis, relevance_score, authenticity_score, hairstyles = []) {
-  if (!pool) {
+  // If there's no DB pool available, or this is a sample run using
+  // non-integer IDs (e.g. 'img1'), treat it as a simulation and
+  // avoid performing any writes. This prevents type errors when
+  // sample data uses string IDs while the DB expects integer keys.
+  if (!pool || typeof imageId !== 'number') {
     console.log('(SIM) Persisting analysis for', imageId, 'relevance=', relevance_score, 'authenticity=', authenticity_score);
     console.log('(SIM) analysis:', JSON.stringify(rawAnalysis && (rawAnalysis.labels || rawAnalysis.objects || rawAnalysis), null, 2));
     console.log('(SIM) hairstyles:', JSON.stringify(hairstyles));
@@ -104,8 +110,10 @@ async function analyzeAndPersist(image) {
     try {
       const gv = await analyzeWithGoogle(image.url);
       // Map Google results into our analysis shape
+      // Boost provenance if the image is from social media sources
+      const provenance_score = image.source === 'social' ? 0.5 : (image.source === 'yelp' ? 0.25 : 0.05);
       const analysis = {
-        provenance_score: image.source === 'yelp' ? 0.25 : 0.05,
+        provenance_score,
         labels: gv.labels,
         ocr: { text: gv.texts, score: gv.texts ? 0.1 : 0 },
         faces: { count: gv.faces.length, score: (gv.faces[0] && gv.faces[0].detectionConfidence) || 0 },
@@ -194,7 +202,9 @@ function detectHairstylesFromAnalysis(analysis) {
 async function processSample() {
   const SAMPLE = [
     { id: 'img1', url: 'https://s3.example.com/uploads/barber-shop-1.jpg', source: 'yelp' },
-    { id: 'img2', url: 'https://example.com/photos/landscape.jpg', source: 'scraped' }
+    { id: 'img2', url: 'https://example.com/photos/landscape.jpg', source: 'scraped' },
+    // Social media sample image — provenance boosted and analyzed
+    { id: 'img3', url: 'https://social.example.com/instagram/barber1.jpg', source: 'social' }
   ];
   for (const img of SAMPLE) {
     try {

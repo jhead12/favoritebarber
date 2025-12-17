@@ -1,3 +1,29 @@
+// Location persistence utility
+export function saveLocation(lat: number, lon: number) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('user_location', JSON.stringify({ lat, lon, timestamp: Date.now() }));
+  } catch (e) {
+    console.warn('Failed to save location', e);
+  }
+}
+
+export function loadLocation(): { lat: number; lon: number } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const stored = localStorage.getItem('user_location');
+    if (!stored) return null;
+    const parsed = JSON.parse(stored);
+    // Expire after 24 hours
+    if (Date.now() - parsed.timestamp > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem('user_location');
+      return null;
+    }
+    return { lat: parsed.lat, lon: parsed.lon };
+  } catch (e) {
+    return null;
+  }
+}
 export type Coords = { latitude: number; longitude: number };
 const KEY = 'ryb:lastLocation';
 

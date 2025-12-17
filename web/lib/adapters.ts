@@ -10,11 +10,16 @@ export type UiBarber = {
   specialties: any[];
   price: string;
   thumb: string;
+  // entityType helps the UI decide which page to link to
+  entityType?: 'barber' | 'shop' | 'unknown';
 };
 
 export function mapApiBarberToUi(b: any): UiBarber {
-  // DB-backed barber
-  if (b && (b.trust_score || b.thumbnail_url || b.distance_m !== undefined)) {
+  // DB-backed barber detection.
+  // Avoid classifying Yelp-like results as DB-backed just because they include `distance_m`.
+  // Look for explicit DB-backed markers: `trust_score`, `thumbnail_url`, `primary_location`, `top_tags`, or internal numeric id.
+  const looksDbBacked = !!(b && (b.trust_score || b.thumbnail_url || b.primary_location || b.top_tags || (typeof b.id === 'number')));
+  if (looksDbBacked) {
     const trustVal = b.trust_score ? (typeof b.trust_score.value === 'number' ? b.trust_score.value : Number(b.trust_score.value)) : 0;
     // Normalize shop field: it may be an object (shop row) or a string
     let shopStr = '';
@@ -33,10 +38,11 @@ export function mapApiBarberToUi(b: any): UiBarber {
       specialties: b.top_tags || b.specialties || [],
       price: b.price || '$$?',
       thumb: b.thumbnail_url || b.image_url || b.thumb || '',
+      entityType: 'barber',
     };
   }
 
-  // Yelp-like result
+  // Yelp-like result (fallback)
   return {
     id: b.id,
     name: b.name || '',
@@ -46,5 +52,7 @@ export function mapApiBarberToUi(b: any): UiBarber {
     specialties: b.categories || [],
     price: b.price || '$$?',
     thumb: b.image_url || '',
+    // If id is numeric treat conservatively as barber; otherwise this is a shop from Yelp
+    entityType: typeof b.id === 'number' ? 'barber' : 'shop',
   };
 }

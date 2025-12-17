@@ -1,9 +1,9 @@
 /**
- * Enhanced review parser using local Llama (via Ollama) for NER and sentiment
- * Falls back to heuristics if Ollama unavailable
+ * Enhanced review parser using LLM providers (Ollama, OpenAI, etc.) for NER and sentiment
+ * Falls back to heuristics if LLM unavailable
  */
 
-const { extractNamesFromReview, analyzeSentiment, summarizeReview } = require('./ollama_client');
+const { extractNamesFromReview, analyzeSentiment, summarizeReview } = require('./llm_client');
 const { detectLanguage } = require('./language_utils');
 
 // Rule-based pre-filter: mask PII and detect spammy content before sending to LLMs
@@ -104,11 +104,14 @@ async function parseReview(reviewText, shopName = null) {
     
     // Fallback: use shop name if no barber names found
     const finalNames = (names && names.length > 0) ? names : (shopName ? [shopName] : []);
-    
-    return { names: finalNames, sentiment, summary, language: language, language_confidence: langInfo.confidence, prefilter: pre, success: true };
+
+    // Detect hairstyles mentioned in the review text (heuristic)
+    const hairstyles = detectHairstylesFromText(reviewText || '');
+
+    return { names: finalNames, sentiment, summary, language: language, language_confidence: langInfo.confidence, prefilter: pre, hairstyles, success: true };
   } catch (err) {
     console.error('Parse failed:', err.message);
-    return { names: shopName ? [shopName] : [], sentiment: 0, summary: '', success: false };
+    return { names: shopName ? [shopName] : [], sentiment: 0, summary: '', hairstyles: [], success: false };
   }
 }
 
@@ -123,3 +126,42 @@ module.exports = {
   parseReview,
   parseReviews,
 };
+
+/**
+ * Heuristic detector for hairstyle mentions within free text reviews.
+ * Returns an array of canonical hairstyle names (deduplicated).
+ */
+function detectHairstylesFromText(text) {
+  if (!text || typeof text !== 'string') return [];
+  const t = text.toLowerCase();
+
+  const mapping = {
+    'fade': ['fade', 'faded', 'skin fade', 'low fade', 'high fade', 'taper fade'],
+    'pompadour': ['pompadour', 'pompadour-style', 'pompadour.'],
+    'undercut': ['undercut', 'undercut-style'],
+    'buzz cut': ['buzz', 'buzz cut', 'buz cut'],
+    'crew cut': ['crew cut'],
+    'mohawk': ['mohawk', 'mohican'],
+    'afro': ['afro'],
+    'braids': ['braid', 'braids', 'cornrows'],
+    'ponytail': ['ponytail'],
+    'dreadlocks': ['dread', 'dreadlocks', 'locs', 'locks'],
+    'man bun': ['man bun', 'top knot'],
+    'taper': ['taper', 'tapered'],
+    'slicked back': ['slicked back', 'slick back']
+  };
+
+  const found = new Set();
+  for (const [canon, variants] of Object.entries(mapping)) {
+    for (const v of variants) {
+      // word-boundary-ish check
+      const re = new RegExp('\\b' + v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+      if (re.test(text)) {
+        found.add(canon);
+        break;
+      }
+    }
+  }
+
+  return Array.from(found);
+}

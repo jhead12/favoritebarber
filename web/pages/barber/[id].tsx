@@ -5,9 +5,10 @@ import { setLastVisitedBarber } from '../../lib/lastVisited';
 
 type Props = {
   barberRaw: any | null;
+  yelpError?: { status?: number; detail?: string } | null;
 };
 
-export default function BarberProfilePage({ barberRaw }: Props): JSX.Element {
+export default function BarberProfilePage({ barberRaw, yelpError }: Props): React.ReactElement {
   const router = useRouter();
   const barber = barberRaw ? mapApiBarberToUi(barberRaw) : null;
 
@@ -23,7 +24,24 @@ export default function BarberProfilePage({ barberRaw }: Props): JSX.Element {
     } catch (e) {}
   }, [barberRaw]);
 
-  if (!barberRaw || !barber) return <div>No barber found</div>;
+  if (!barberRaw || !barber) {
+    if (yelpError) {
+      return (
+        <main style={{ padding: 20 }}>
+          <div style={{ marginBottom: 12 }}>
+            <button onClick={() => (typeof window !== 'undefined' ? window.history.back() : null)} style={{ padding: '6px 10px' }}>
+              ← Back
+            </button>
+          </div>
+          <h1>Profile unavailable</h1>
+          <p>We couldn't find this barber in the local database.</p>
+          <p style={{ color: '#c66' }}>Yelp fallback error: {yelpError.status || 'unknown'} {yelpError.detail ? `— ${yelpError.detail}` : ''}</p>
+          <p>You can enqueue discovery to fetch and enrich this shop's data.</p>
+        </main>
+      );
+    }
+    return <div>No barber found</div>;
+  }
 
   const barberVerified = barberRaw.verified === true || barberRaw.is_verified === true || !!barberRaw.verified_at || barberRaw.status === 'verified';
   const shop = barberRaw.primary_location || barberRaw.shop || null;
@@ -49,6 +67,38 @@ export default function BarberProfilePage({ barberRaw }: Props): JSX.Element {
           <p style={{ margin: 0 }}><strong>Shop:</strong> {barber.shop || 'Independent'}</p>
           <p style={{ margin: 0 }}><strong>Distance:</strong> {barber.distance}</p>
           <p style={{ margin: 0 }}><strong>Trust:</strong> {barber.trust}</p>
+          {(() => {
+            // Aggregate unique hairstyles from enriched images (gallery) and from reviews
+            const allHairstyles = new Set<string>();
+            const gallery = barberRaw?.gallery || [];
+            gallery.forEach((img: any) => {
+              if (img.hairstyles && Array.isArray(img.hairstyles)) {
+                img.hairstyles.forEach((style: string) => allHairstyles.add(style));
+              }
+            });
+            // Also include hairstyles extracted from reviews (if present)
+            const reviews = barberRaw?.reviews || [];
+            reviews.forEach((r: any) => {
+              if (r.hairstyles && Array.isArray(r.hairstyles)) {
+                r.hairstyles.forEach((s: string) => allHairstyles.add(s));
+              }
+            });
+            // Include pre-aggregated barber-level hairstyles if present
+            if (barberRaw.hairstyles && Array.isArray(barberRaw.hairstyles)) {
+              barberRaw.hairstyles.forEach((h: any) => {
+                // support both {style,count} and string forms
+                if (typeof h === 'string') allHairstyles.add(h);
+                else if (h && h.style) allHairstyles.add(h.style);
+              });
+            }
+            const hairstyles = Array.from(allHairstyles).sort();
+            if (hairstyles.length > 0) {
+              return (
+                <p style={{ margin: '8px 0 0' }}><strong>Specialties (AI-detected):</strong> {hairstyles.join(', ')}</p>
+              );
+            }
+            return null;
+          })()}
         </div>
       </div>
 
@@ -111,7 +161,7 @@ export default function BarberProfilePage({ barberRaw }: Props): JSX.Element {
           <p><strong>Name:</strong> {shop.name || shop.formatted_address || barber.shop}</p>
           <p><strong>Verified:</strong> {shopVerified ? 'Yes' : 'No'}</p>
           {shop.id ? (
-            <p><a href={`/shop/${shop.id}`}>Open shop page</a></p>
+            <p><a href={`/shop/${encodeURIComponent(String(shop.id).trim())}`}>Open shop page</a></p>
           ) : null}
         </section>
       )}
@@ -124,7 +174,37 @@ export async function getServerSideProps(context: any) {
   const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
   try {
     const res = await fetch(`${apiBase}/api/barbers/${id}`);
-    if (res.status === 404) return { notFound: true };
+    if (res.status === 404) {
+      // Fallback: if id looks like a Yelp id try fetching Yelp business details
+      if (typeof id === 'string' && isNaN(Number(id))) {
+        try {
+          // Prefer GraphQL proxy for richer data
+          let yRes = await fetch(`${apiBase}/api/yelp-graphql/business/${encodeURIComponent(id)}`);
+          if (!yRes.ok) {
+            yRes = await fetch(`${apiBase}/api/yelp-business/${encodeURIComponent(id)}`);
+          }
+          if (yRes.ok) {
+            const b = await yRes.json();
+            // Build a minimal barberRaw shape used by the page
+            const barberRaw = {
+              id: b.id,
+              name: b.name,
+              primary_location: { formatted_address: b.address },
+              thumbnail_url: b.images && b.images.length ? b.images[0].url : '',
+              trust_score: { value: Math.min(100, Math.round((b.rating || 0) / 5 * 100)) },
+              reviews: [],
+            };
+            return { props: { barberRaw } };
+          } else {
+            const txt = await yRes.text().catch(() => null);
+            return { props: { barberRaw: null, yelpError: { status: yRes.status, detail: txt } } };
+          }
+        } catch (e) {
+          // ignore and continue to return notFound
+        }
+      }
+      return { notFound: true };
+    }
     if (!res.ok) return { props: { barberRaw: null } };
     const barberRaw = await res.json();
     return { props: { barberRaw } };

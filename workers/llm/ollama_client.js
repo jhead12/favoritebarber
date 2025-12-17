@@ -274,11 +274,25 @@ Return only the JSON array.`;
   }
 }
 
+/**
+ * Generic call method for arbitrary prompts
+ * Used by moderator, trust scorer, and other advanced use cases
+ * 
+ * @param {string} prompt - The prompt text
+ * @param {Object} options - { system, temperature, ... } (system message for context)
+ * @returns {Promise<string>} LLM response text
+ */
+async function call(prompt, options = {}) {
+  return callOllama(prompt, options.system || null);
+}
+
 module.exports = {
   checkOllama,
   callOllama,
   extractNamesFromReview,
   analyzeSentiment,
   summarizeReview,
+  extractAdjectivesFromReview,
+  call
 };
 

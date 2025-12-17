@@ -52,10 +52,65 @@ router.get('/:id', async (req, res) => {
       } : null
     };
 
+    // Attach gallery of images with attribution metadata
+    try {
+      const imgQ = await pool.query(
+        `SELECT id, url, source, relevance_score, hairstyles, attribution_metadata, caption
+         FROM images 
+         WHERE barber_id = $1 AND COALESCE(relevance_score, 0) > 0.5
+         ORDER BY relevance_score DESC NULLS LAST, fetched_at DESC 
+         LIMIT 20`,
+        [barberInternalId]
+      );
+      
+      if (imgQ.rowCount) {
+        out.gallery = imgQ.rows.map(img => ({
+          id: img.id,
+          url: img.url,
+          source: img.source,
+          relevance_score: img.relevance_score,
+          hairstyles: img.hairstyles || [],
+          attribution: img.attribution_metadata || null,
+          caption: img.caption || null
+        }));
+        out.thumbnail_url = imgQ.rows[0].url; // First image as thumbnail
+      } else if (shop && shop.id) {
+        // Fallback to shop images if no barber-specific images
+        const sImgQ = await pool.query(
+          `SELECT id, url, source, relevance_score, hairstyles, attribution_metadata, caption
+           FROM images 
+           WHERE shop_id = $1 AND COALESCE(relevance_score, 0) > 0.5
+           ORDER BY relevance_score DESC NULLS LAST, fetched_at DESC 
+           LIMIT 20`,
+          [shop.id]
+        );
+        if (sImgQ.rowCount) {
+          out.gallery = sImgQ.rows.map(img => ({
+            id: img.id,
+            url: img.url,
+            source: img.source,
+            relevance_score: img.relevance_score,
+            hairstyles: img.hairstyles || [],
+            attribution: img.attribution_metadata || null,
+            caption: img.caption || null,
+            from_shop: true
+          }));
+          out.thumbnail_url = sImgQ.rows[0].url;
+        } else {
+          out.gallery = [];
+        }
+      } else {
+        out.gallery = [];
+      }
+    } catch (imgErr) {
+      console.error('barbers/:id image query error', imgErr);
+      out.gallery = [];
+    }
+
     // Attach recent sanitized LLM-enriched comments (if available) from reviews.
     try {
       const revQ = await pool.query(
-        `SELECT id, rating, created_at, review_summary, text
+        `SELECT id, rating, created_at, review_summary, text, hairstyles
          FROM reviews
          WHERE barber_id = $1
          ORDER BY enriched_at DESC NULLS LAST, created_at DESC
@@ -70,6 +125,7 @@ router.get('/:id', async (req, res) => {
           // Prefer LLM-produced summary (sanitized). Fallback to raw text excerpt if summary missing.
           summary: r.review_summary || (r.text ? (r.text.length > 300 ? r.text.slice(0, 300) + '…' : r.text) : null),
           sanitized: !!r.review_summary,
+          hairstyles: r.hairstyles || [],
         }));
       } else {
         out.reviews = [];
@@ -77,6 +133,28 @@ router.get('/:id', async (req, res) => {
     } catch (revErr) {
       console.error('barbers/:id reviews query error', revErr);
       out.reviews = [];
+    }
+
+    // Attach discovered social profiles (discovered by crawlers/playwright)
+    try {
+      const yelpId = b.yelp_business_id || null;
+      if (yelpId) {
+        const spQ = await pool.query(
+          `SELECT id, platform, handle, profile_url, name, confidence, evidence
+           FROM social_profiles
+           WHERE (evidence->> 'yelp_business') = $1
+              OR (evidence->'source_record'->> 'yelp_business') = $1
+           ORDER BY confidence DESC NULLS LAST
+           LIMIT 20`,
+          [String(yelpId)]
+        );
+        out.social_profiles = spQ.rowCount ? spQ.rows : [];
+      } else {
+        out.social_profiles = [];
+      }
+    } catch (spErr) {
+      console.error('barbers/:id social_profiles query error', spErr);
+      out.social_profiles = [];
     }
 
     res.json(out);
