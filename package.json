@@ -14,6 +14,18 @@
     "seed": "npm --prefix api run seed",
     "test:integration": "node tests/integration/test_image_processor.js",
     "test:smoke": "node tests/smoke/api_smoke.js",
+    "test:llm": "./scripts/run_llm_tests.sh",
+    "test:llm:comparison": "./scripts/run_llm_tests.sh comparison",
+    "test:llm:accuracy": "./scripts/run_llm_tests.sh accuracy",
+    "test:llm:openai": "./scripts/run_llm_tests.sh accuracy openai",
+    "test:llm:all": "./scripts/run_llm_tests.sh all",
+    "test:llm:benchmark": "./scripts/run_benchmark.sh",
+    "test:llm:benchmark:all": "./scripts/run_benchmark.sh all",
+    "test:llm:golden": "./scripts/run_benchmark.sh mock",
+    "enrich": "node workers/enrichment_worker.js --pending",
+    "enrich:all": "node workers/enrichment_worker.js --all",
+    "enrich:sample": "node workers/enrichment_worker.js --sample",
+    "enrich:status": "node workers/scripts/enrichment_status.js",
     "reconcile:orphans": "node api/scripts/reconcile_orphan_image_analyses.js"
   },
   "dependencies": {

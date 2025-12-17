@@ -1,9 +1,9 @@
 /**
- * Enhanced review parser using local Llama (via Ollama) for NER and sentiment
- * Falls back to heuristics if Ollama unavailable
+ * Enhanced review parser using LLM providers (Ollama, OpenAI, etc.) for NER and sentiment
+ * Falls back to heuristics if LLM unavailable
  */
 
-const { extractNamesFromReview, analyzeSentiment, summarizeReview } = require('./ollama_client');
+const { extractNamesFromReview, analyzeSentiment, summarizeReview } = require('./llm_client');
 const { detectLanguage } = require('./language_utils');
 
 // Rule-based pre-filter: mask PII and detect spammy content before sending to LLMs

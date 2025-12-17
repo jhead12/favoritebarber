@@ -93,22 +93,31 @@ async function fetchAllReviews(limit = 100) {
  * Persist enriched review data
  */
 async function updateReviewEnrichment(reviewId, enrichmentData) {
+  const provider = process.env.LLM_PROVIDER || 'ollama';
+  const model = provider === 'ollama' 
+    ? (process.env.OLLAMA_MODEL || 'llama3.2:3b')
+    : (process.env.OPENAI_MODEL || 'gpt-4o-mini');
+  
   const query = `
     UPDATE reviews
     SET
       extracted_names = $1,
       review_summary = $2,
       enriched_at = NOW(),
-      prefilter_flags = $3,
-      prefilter_details = $4,
-      adjectives = $5,
-      enriched_sentiment = $6,
-      sentiment_score = $7
-    WHERE id = $8;
+      enriched_provider = $3,
+      enriched_model = $4,
+      prefilter_flags = $5,
+      prefilter_details = $6,
+      adjectives = $7,
+      enriched_sentiment = $8,
+      sentiment_score = $9
+    WHERE id = $10;
   `;
   await db.query(query, [
     enrichmentData.names ? enrichmentData.names.join(', ') : null,
     enrichmentData.summary || null,
+    provider,
+    model,
     enrichmentData.prefilter ? JSON.stringify(enrichmentData.prefilter.flags || {}) : null,
     enrichmentData.prefilter ? JSON.stringify(enrichmentData.prefilter.details || {}) : null,
     enrichmentData.adjectives ? JSON.stringify(enrichmentData.adjectives) : null,

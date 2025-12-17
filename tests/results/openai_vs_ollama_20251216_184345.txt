@@ -1,0 +1,77 @@
+
+🧪 OPENAI (ChatGPT) vs OLLAMA COMPARISON TEST
+
+✓ Ollama is reachable at http://localhost:11434
+
+================================================================================
+Testing: OLLAMA (LLAMA3.2:3B)
+================================================================================
+
+Test #1: Clear positive with barber name
+Review: "I went to Budget Barbers yesterday and asked for a fade. John did an absolutely ..."
+  Names: John ✅ (expected: John)
+  Sentiment: positive (1) ✅ (expected: 1)
+
+Test #2: Enthusiastic positive
+Review: "Downtown Barbershop is the best! Mike gave me the best haircut I've ever had. Ve..."
+  Names: Mike ✅ (expected: Mike)
+  Sentiment: positive (1) ✅ (expected: 1)
+
+Test #3: Negative with barber name
+Review: "I went to City Cuts and got a terrible haircut. The barber, Tony, didn't listen ..."
+  Names: Tony ✅ (expected: Tony)
+  Sentiment: negative (-1) ✅ (expected: -1)
+
+Test #4: Positive, no specific barber
+Review: "Great experience at Elite Barbers. The barber was very professional and the cut ..."
+  Names: the, was ❌ (expected: none)
+  Sentiment: positive (1) ✅ (expected: 1)
+
+Test #5: Neutral sentiment
+Review: "Average haircut at Downtown Barbershop. The barber was okay but not great. Price..."
+  Names: was ❌ (expected: none)
+  Sentiment: neutral (0) ✅ (expected: 0)
+
+Test #6: Mixed sentiment
+Review: "The haircut was good but the service was slow. Waited 45 minutes. Barber didn't ..."
+  Names: Barber Marcus, Waiter ❌ (expected: none)
+  Sentiment: negative (-1) ❌ (expected: 0)
+
+────────────────────────────────────────────────────────────────────────────────
+OLLAMA (LLAMA3.2:3B) RESULTS:
+  Name Recognition: 3/6 (50.0%)
+  Sentiment Analysis: 5/6 (83.3%)
+================================================================================
+
+================================================================================
+Testing: OPENAI (GPT-4O-MINI)
+================================================================================
+
+Test #1: Clear positive with barber name
+Review: "I went to Budget Barbers yesterday and asked for a fade. John did an absolutely ..."
+  Names: John ✅ (expected: John)
+  Sentiment: positive (1) ✅ (expected: 1)
+
+Test #2: Enthusiastic positive
+Review: "Downtown Barbershop is the best! Mike gave me the best haircut I've ever had. Ve..."
+  Names: Mike ✅ (expected: Mike)
+  Sentiment: positive (1) ✅ (expected: 1)
+
+Test #3: Negative with barber name
+Review: "I went to City Cuts and got a terrible haircut. The barber, Tony, didn't listen ..."
+  Names: Tony ✅ (expected: Tony)
+  Sentiment: negative (-1) ✅ (expected: -1)
+
+Test #4: Positive, no specific barber
+Review: "Great experience at Elite Barbers. The barber was very professional and the cut ..."
+  Names: the, was ❌ (expected: none)
+  Sentiment: positive (1) ✅ (expected: 1)
+
+Test #5: Neutral sentiment
+Review: "Average haircut at Downtown Barbershop. The barber was okay but not great. Price..."
+  Names: was ❌ (expected: none)
+  Sentiment: neutral (0) ✅ (expected: 0)
+
+Test #6: Mixed sentiment
+Review: "The haircut was good but the service was slow. Waited 45 minutes. Barber didn't ..."
+  Names: (none) ✅ (expected: none)

@@ -199,11 +199,11 @@ app.get('/api/yelp-graphql/business/:id', async (req, res) => {
 }
 `;
     const gql = await queryYelpGraphql(query);
-    if (!gql || !gql.data || !gql.data.business) {
+    if (!gql || !gql.business) {
       const errText = (gql && gql.errors) ? JSON.stringify(gql.errors) : 'no_business';
       return res.status(502).json({ error: 'GraphQL error', detail: errText });
     }
-    const b = gql.data.business;
+    const b = gql.business;
     const out = mapGraphqlBusiness(b) || {};
     res.json(out);
   } catch (err) {

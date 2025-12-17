@@ -35,7 +35,8 @@ async function queryYelpGraphql(queryString, opts = {}) {
 
   const headers = {
     Authorization: `Bearer ${API_KEY}`,
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Accept-Language': 'en_US'
   };
 
   // Acquire combined Yelp quota (REST + GraphQL) before making the outbound call.

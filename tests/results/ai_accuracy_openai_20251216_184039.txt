@@ -1,0 +1,236 @@
+
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                ║
+║                   AI ACCURACY TEST SUITE - LOCAL LLM                           ║
+║                     Testing Barber & Shop Recognition                          ║
+║                                                                                ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+Testing with Ollama endpoint: http://localhost:11434
+Total test cases: 8
+
+
+📝 Test #1: Clear barber name mention (John) with shop name
+────────────────────────────────────────────────────────────────────────────────
+Review: "I went to Budget Barbers yesterday and asked for a fade. John did an absolutely amazing job! He's a ..."
+Shop: Budget Barbers
+Expected Barbers: John
+
+✓ Extracted Names: John
+  ✅ PASS - Expected: John
+
+✓ Sentiment Score: 1.000
+  Category: positive (+1.000)
+  ✅ PASS - Expected: positive
+
+✓ Summary (max 15 words):
+  "I went to Budget Barbers yesterday and asked for a fade. John did an absolutely…"
+  Length: 15 words
+
+✓ Full Parse Result:
+  Names: John
+  Sentiment: 1.000
+  Summary: "I went to Budget Barbers yesterday and asked for a fade. John did an absolutely…"
+  ✅ PASS - Fallback logic working correctly
+
+📝 Test #2: Clear barber name (Mike) with enthusiastic review
+────────────────────────────────────────────────────────────────────────────────
+Review: "Downtown Barbershop is the best! Mike gave me the best haircut I've ever had. Very friendly staff. H..."
+Shop: Downtown Barbershop
+Expected Barbers: Mike
+
+✓ Extracted Names: Mike
+  ✅ PASS - Expected: Mike
+
+✓ Sentiment Score: 0.000
+  Category: neutral (0.000)
+  ❌ FAIL - Expected: positive
+
+✓ Summary (max 15 words):
+  "Downtown Barbershop is the best! Mike gave me the best haircut I've ever had. Very…"
+  Length: 15 words
+
+✓ Full Parse Result:
+  Names: Mike
+  Sentiment: 0.000
+  Summary: "Downtown Barbershop is the best! Mike gave me the best haircut I've ever had. Very…"
+  ✅ PASS - Fallback logic working correctly
+
+📝 Test #3: Negative sentiment with clear barber name (Tony)
+────────────────────────────────────────────────────────────────────────────────
+Review: "I went to City Cuts and got a terrible haircut. The barber, Tony, didn't listen to what I asked for...."
+Shop: City Cuts
+Expected Barbers: Tony
+
+✓ Extracted Names: (none)
+  ❌ FAIL - Expected: Tony
+
+✓ Sentiment Score: -1.000
+  Category: negative (-1.000)
+  ✅ PASS - Expected: negative
+
+✓ Summary (max 15 words):
+  "I went to City Cuts and got a terrible haircut. The barber, Tony, didn't listen…"
+  Length: 15 words
+
+✓ Full Parse Result:
+  Names: City Cuts
+  Sentiment: -1.000
+  Summary: "I went to City Cuts and got a terrible haircut. The barber, Tony, didn't listen…"
+  ✅ PASS - Fallback logic working correctly
+
+📝 Test #4: Positive review with no specific barber name - should fallback to shop
+────────────────────────────────────────────────────────────────────────────────
+Review: "Great experience at Elite Barbers. The barber was very professional and the cut came out perfect...."
+Shop: Elite Barbers
+Expected Barbers: (none/fallback to shop)
+
+✓ Extracted Names: the, was
+  ❌ FAIL - Expected: (none)
+
+✓ Sentiment Score: 1.000
+  Category: positive (+1.000)
+  ✅ PASS - Expected: positive
+
+✓ Summary (max 15 words):
+  "Great experience at Elite Barbers. The barber was very professional and the cut came out…"
+  Length: 15 words
+
+✓ Full Parse Result:
+  Names: the, was
+  Sentiment: 1.000
+  Summary: "Great experience at Elite Barbers. The barber was very professional and the cut came out…"
+  ❌ FAIL - Fallback logic working correctly
+
+📝 Test #5: Barber name (Sarah) with positive sentiment
+────────────────────────────────────────────────────────────────────────────────
+Review: "Sarah cut my hair at Precision Cuts last week. She did an excellent job on the fade...."
+Shop: Precision Cuts
+Expected Barbers: Sarah
+
+✓ Extracted Names: Sarah
+  ✅ PASS - Expected: Sarah
+
+✓ Sentiment Score: 1.000
+  Category: positive (+1.000)
+  ✅ PASS - Expected: positive
+
+✓ Summary (max 15 words):
+  "Sarah cut my hair at Precision Cuts last week. She did an excellent job on…"
+  Length: 15 words
+
+✓ Full Parse Result:
+  Names: Sarah
+  Sentiment: 1.000
+  Summary: "Sarah cut my hair at Precision Cuts last week. She did an excellent job on…"
+  ✅ PASS - Fallback logic working correctly
+
+📝 Test #6: Neutral sentiment with no specific barber name
+────────────────────────────────────────────────────────────────────────────────
+Review: "Average haircut at Downtown Barbershop. The barber was okay but not great. Price is reasonable thoug..."
+Shop: Downtown Barbershop
+Expected Barbers: (none/fallback to shop)
+
+✓ Extracted Names: was
+  ❌ FAIL - Expected: (none)
+
+✓ Sentiment Score: 0.000
+  Category: neutral (0.000)
+  ✅ PASS - Expected: neutral
+
+✓ Summary (max 15 words):
+  "Average haircut at Downtown Barbershop. The barber was okay but not great. Price is reasonable…"
+  Length: 15 words
+
+✓ Full Parse Result:
+  Names: was
+  Sentiment: 0.000
+  Summary: "Average haircut at Downtown Barbershop. The barber was okay but not great. Price is reasonable…"
+  ❌ FAIL - Fallback logic working correctly
+
+📝 Test #7: Clear barber name (Marcus) with specific request mentioned
+────────────────────────────────────────────────────────────────────────────────
+Review: "I asked for a medium fade and Marcus did exactly what I wanted at Urban Barber. Very satisfied!..."
+Shop: Urban Barber
+Expected Barbers: Marcus
+
+✓ Extracted Names: Marcus, at
+  ✅ PASS - Expected: Marcus
+
+✓ Sentiment Score: 0.000
+  Category: neutral (0.000)
+  ❌ FAIL - Expected: positive
+
+✓ Summary (max 15 words):
+  "I asked for a medium fade and Marcus did exactly what I wanted at Urban…"
+  Length: 15 words
+
+✓ Full Parse Result:
+  Names: Marcus, at
+  Sentiment: 0.000
+  Summary: "I asked for a medium fade and Marcus did exactly what I wanted at Urban…"
+  ✅ PASS - Fallback logic working correctly
+
+📝 Test #8: Mixed sentiment - positive cut, negative service
+────────────────────────────────────────────────────────────────────────────────
+Review: "The haircut was good but the service was slow. Waited 45 minutes. Barber didn't give much attention...."
+Shop: Quick Cuts
+Expected Barbers: (none/fallback to shop)
+
+✓ Extracted Names: (none)
+  ✅ PASS - Expected: (none)
+
+✓ Sentiment Score: 0.000
+  Category: neutral (0.000)
+  ✅ PASS - Expected: neutral
+
+✓ Summary (max 15 words):
+  "The haircut was good but the service was slow. Waited 45 minutes. Barber didn't give…"
+  Length: 15 words
+
+✓ Full Parse Result:
+  Names: Quick Cuts
+  Sentiment: 0.000
+  Summary: "The haircut was good but the service was slow. Waited 45 minutes. Barber didn't give…"
+  ✅ PASS - Fallback logic working correctly
+
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                            TEST RESULTS SUMMARY                                ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+📊 Overall Statistics:
+  • Tests Run: 8
+  • Tests Passed: 8
+  • Tests Failed: 0
+
+🎯 Accuracy Metrics:
+  • Barber Name Recognition: 62.5% (5/8)
+  • Sentiment Analysis: 75.0% (6/8)
+  • Fallback Logic: 75.0% (6/8)
+
+📋 Detailed Results:
+┌────┬──────────────────────────────────┬────────┬──────────┬──────────┐
+│ ID │ Test Description                 │ Barber │ Sentiment│ Fallback │
+├────┼──────────────────────────────────┼────────┼──────────┼──────────┤
+│ 1  │ Clear barber name mention (Joh │ ✅     │ ✅       │ ✅       │
+│ 2  │ Clear barber name (Mike) with  │ ✅     │ ❌       │ ✅       │
+│ 3  │ Negative sentiment with clear  │ ❌     │ ✅       │ ✅       │
+│ 4  │ Positive review with no specif │ ❌     │ ✅       │ ❌       │
+│ 5  │ Barber name (Sarah) with posit │ ✅     │ ✅       │ ✅       │
+│ 6  │ Neutral sentiment with no spec │ ❌     │ ✅       │ ❌       │
+│ 7  │ Clear barber name (Marcus) wit │ ✅     │ ❌       │ ✅       │
+│ 8  │ Mixed sentiment - positive cut │ ✅     │ ✅       │ ✅       │
+└────┴──────────────────────────────────┴────────┴──────────┴──────────┘
+
+⚡ Performance Notes:
+  ✓ All tests completed successfully
+  ✓ Ollama connection working properly
+
+💡 Recommendations:
+  • Barber recognition accuracy is low - consider improving prompt or using larger model
+  • Sentiment analysis could be improved - may need better training
+
+
