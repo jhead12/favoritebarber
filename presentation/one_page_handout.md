@@ -11,6 +11,11 @@ Key Features
 - MCP Server: partner-facing API with auth, quotas, telemetry, and webhooks
 - Visual search (coming soon): image upload → similar barber portfolios
 
+Testing & Reliability
+- Automated test-suite: unit, integration, and end-to-end tests (vitest + Playwright)
+- Mock LLM provider for deterministic CI runs found at `workers/llm/providers/mock.js`
+- Reproducible test DB: `scripts/setup_test_db.sh` and fixtures in `tests/fixtures/`
+
 Developer & Partner Use Cases
 - ChatGPT plugin: "Find a barber who does fades near me"
 - Zapier/Retool: automate lead routing and booking workflows

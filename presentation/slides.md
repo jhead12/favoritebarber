@@ -25,8 +25,15 @@ Slide 5 — Trust Signals & Demo
   - Search: curl "http://localhost:3000/api/search?q=fade&location=Brooklyn"
   - MCP discover: curl -H "Authorization: Bearer ryb_test_KEY" -X POST http://localhost:3000/api/mcp/discover -d '{"location":"Brooklyn","styles":["fade"]}'
 - Visual: profile with `trust_score`, `hairstyles`, and `verified` badge
+-
+Slide 6 — Testing & QA
+- Automated test suite: unit, integration, and end-to-end tests (vitest + Playwright)
+- Deterministic mock providers for LLMs (`workers/llm/providers/mock.js`) enable CI stability
+- Test helpers & fixtures: `tests/`, `tests/fixtures/`, and `scripts/setup_test_db.sh` for reproducible test DB
+- Benchmarks & LLM accuracy harness: `workers/llm/benchmark_providers.js`, `workers/llm/TESTS_README.md`
+- Key demo commands: `./scripts/setup_test_db.sh` then `npm run test` (API/workers)
 
-Slide 6 — Growth & Ask
+Slide 7 — Growth & Ask
 - Roadmap: Consumer MVP → MCP developer platform → Barber SaaS + marketplace
 - Monetization: booking fees, premium listings, barber SaaS ($29/mo), MCP partner tiers ($299/mo)
 - Ask: beta partners, design help, or $50k seed to accelerate onboarding and Yelp quota

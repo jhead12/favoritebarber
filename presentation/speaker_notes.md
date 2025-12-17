@@ -27,7 +27,14 @@ Slide 5 — Trust Signals & Demo (2:20–3:20)
 
 - Talk through a sample profile: on-location photo + 10 positive, attributed reviews → TrustScore ~85 (Trusted)
 
-Slide 6 — Growth & Ask (3:20–5:00)
+Slide 6 — Testing & QA (2:20–3:10)
+- Say: "We have a comprehensive testing suite to keep our AI pipelines reliable."
+- Describe: unit tests for core logic, integration tests for API endpoints, Playwright end-to-end flows for worker-driven enrichment.
+- Highlight: Mock LLM provider (`workers/llm/providers/mock.js`) for deterministic CI runs and `workers/llm/TESTS_README.md` for LLM benchmarking.
+- Show how to run tests locally: `./scripts/setup_test_db.sh` then `npm test` (or `npm run test:ui` for Playwright).
+- Note: Trust score computations are covered by offline evaluation harness and synthetic datasets in `tests/fixtures/`.
+
+Slide 7 — Growth & Ask (3:10–5:00)
 - Roadmap and revenue model (booking fees, barber SaaS, MCP tiers)
 - Ask: beta partners, design help, $50k seed
 
