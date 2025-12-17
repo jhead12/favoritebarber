@@ -1,0 +1,12 @@
+{
+  "name": "favorite-barber-presentation",
+  "version": "1.0.0",
+  "description": "Generate Favorite Barber PPTX presentation",
+  "main": "generate_pptx.js",
+  "scripts": {
+    "build-pptx": "node generate_pptx.js"
+  },
+  "dependencies": {
+    "pptxgenjs": "^3.10.0"
+  }
+}
