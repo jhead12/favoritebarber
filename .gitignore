@@ -28,4 +28,9 @@ web/node_modules/
 node_modules/
 web/node_modules/
 IMAGES/*
-*.psd
+*.psd# Ignore build and large files
+web/.next/
+presentation/*.pdf
+presentation/*.pptx
+IMAGES/*.psd
+web/node_modules/
