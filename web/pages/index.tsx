@@ -160,6 +160,19 @@ export default function Home() {
     return 'http://localhost:3000';
   };
 
+  const getDirectionsUrl = (b: any) => {
+    // Prefer explicit coordinates when available
+    const lat = b.primary_location && b.primary_location.latitude;
+    const lon = b.primary_location && b.primary_location.longitude;
+    if (lat && lon) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${lat},${lon}`)}`;
+    }
+    // Fallback to address text
+    const addr = b.shop || (b.primary_location && b.primary_location.formatted_address) || (b.address || '');
+    if (addr) return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`;
+    return null;
+  };
+
   const handleSearch = async (term: string, location: string, coords?: { latitude: number; longitude: number } | null, filters?: string[]) => {
     setLoading(true);
     setError(null);
@@ -316,7 +329,12 @@ export default function Home() {
                   <h3>{b.name}</h3>
                   <TrustScoreBadge score={b.trust} />
                 </div>
-                <p className="muted">{b.shop} · {b.distance}</p>
+                <p className="muted">{b.shop} · {b.distance ? (
+                  (() => {
+                    const url = getDirectionsUrl(b as any);
+                    return url ? <a className="link" href={url} target="_blank" rel="noopener noreferrer">{b.distance}</a> : <>{b.distance}</>;
+                  })()
+                ) : ''}</p>
                 <p className="chips">
                   {b.specialties.map((s) => (
                     <span key={s}>{s}</span>
