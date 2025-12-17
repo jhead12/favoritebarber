@@ -4,9 +4,12 @@
   "description": "Generate Favorite Barber PPTX presentation",
   "main": "generate_pptx.js",
   "scripts": {
-    "build-pptx": "node generate_pptx.js"
+    "build-pptx": "node generate_pptx.js",
+    "build-images": "node generate_slide_images.js"
   },
   "dependencies": {
-    "pptxgenjs": "^3.10.0"
+    "pptxgenjs": "^3.10.0",
+    "puppeteer": "^21.0.0",
+    "pdfkit": "^0.13.0"
   }
 }
