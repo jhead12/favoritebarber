@@ -67,6 +67,23 @@ export default function BarberProfilePage({ barberRaw, yelpError }: Props): Reac
           <p style={{ margin: 0 }}><strong>Shop:</strong> {barber.shop || 'Independent'}</p>
           <p style={{ margin: 0 }}><strong>Distance:</strong> {barber.distance}</p>
           <p style={{ margin: 0 }}><strong>Trust:</strong> {barber.trust}</p>
+          {(() => {
+            // Aggregate unique hairstyles from enriched images (gallery)
+            const allHairstyles = new Set<string>();
+            const gallery = barberRaw?.gallery || [];
+            gallery.forEach((img: any) => {
+              if (img.hairstyles && Array.isArray(img.hairstyles)) {
+                img.hairstyles.forEach((style: string) => allHairstyles.add(style));
+              }
+            });
+            const hairstyles = Array.from(allHairstyles).sort();
+            if (hairstyles.length > 0) {
+              return (
+                <p style={{ margin: '8px 0 0' }}><strong>Specialties (AI-detected):</strong> {hairstyles.join(', ')}</p>
+              );
+            }
+            return null;
+          })()}
         </div>
       </div>
 

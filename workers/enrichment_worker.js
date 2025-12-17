@@ -103,6 +103,7 @@ async function updateReviewEnrichment(reviewId, enrichmentData) {
     SET
       extracted_names = $1,
       review_summary = $2,
+      hairstyles = $3,
       enriched_at = NOW(),
       enriched_provider = $3,
       enriched_model = $4,
@@ -116,6 +117,7 @@ async function updateReviewEnrichment(reviewId, enrichmentData) {
   await db.query(query, [
     enrichmentData.names ? enrichmentData.names.join(', ') : null,
     enrichmentData.summary || null,
+    enrichmentData.hairstyles ? JSON.stringify(enrichmentData.hairstyles) : null,
     provider,
     model,
     enrichmentData.prefilter ? JSON.stringify(enrichmentData.prefilter.flags || {}) : null,
@@ -160,6 +162,27 @@ async function aggregateBarberAdjectives(barberId) {
   const adjs = res.rows.map(r => ({ adjective: r.adj, count: Number(r.cnt) }));
   const up = `UPDATE barbers SET adjectives = $1 WHERE id = $2`;
   await db.query(up, [JSON.stringify(adjs), barberId]);
+}
+
+async function aggregateBarberHairstyles(barberId) {
+  // Aggregate hairstyles from both reviews and images for the barber
+  const q = `
+    SELECT h, SUM(cnt) as total FROM (
+      SELECT jsonb_array_elements_text(hairstyles) as h, 1 as cnt
+      FROM reviews
+      WHERE barber_id = $1 AND hairstyles IS NOT NULL
+      UNION ALL
+      SELECT jsonb_array_elements_text(hairstyles) as h, 1 as cnt
+      FROM images
+      WHERE barber_id = $1 AND hairstyles IS NOT NULL
+    ) t
+    GROUP BY h
+    ORDER BY total DESC
+  `;
+  const res = await db.query(q, [barberId]);
+  const styles = res.rows.map(r => ({ style: r.h, count: Number(r.total) }));
+  const up = `UPDATE barbers SET hairstyles = $1 WHERE id = $2`;
+  await db.query(up, [JSON.stringify(styles), barberId]);
 }
 
 /**

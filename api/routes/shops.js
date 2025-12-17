@@ -27,10 +27,28 @@ router.get('/:id', async (req, res) => {
       updated_at: s.updated_at,
     };
 
-    // images for shop
+    // images for shop with attribution metadata and hairstyles
     try {
-      const imgs = await pool.query('SELECT id, url, width, height, fetched_at FROM images WHERE shop_id = $1 ORDER BY fetched_at DESC LIMIT 20', [s.id]);
-      out.images = imgs.rowCount ? imgs.rows : [];
+      const imgs = await pool.query(
+        `SELECT id, url, source, width, height, relevance_score, hairstyles, attribution_metadata, caption, fetched_at 
+         FROM images 
+         WHERE shop_id = $1 AND COALESCE(relevance_score, 0) > 0.5
+         ORDER BY relevance_score DESC NULLS LAST, fetched_at DESC 
+         LIMIT 20`, 
+        [s.id]
+      );
+      out.images = imgs.rowCount ? imgs.rows.map(img => ({
+        id: img.id,
+        url: img.url,
+        source: img.source,
+        width: img.width,
+        height: img.height,
+        relevance_score: img.relevance_score,
+        hairstyles: img.hairstyles || [],
+        attribution: img.attribution_metadata || null,
+        caption: img.caption || null,
+        fetched_at: img.fetched_at
+      })) : [];
     } catch (imgErr) {
       console.error('shops/:id images query error', imgErr);
       out.images = [];

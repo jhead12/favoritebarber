@@ -52,20 +52,59 @@ router.get('/:id', async (req, res) => {
       } : null
     };
 
-    // Attach a thumbnail image: prefer barber images, fallback to shop images
+    // Attach gallery of images with attribution metadata
     try {
       const imgQ = await pool.query(
-        `SELECT url FROM images WHERE barber_id = $1 ORDER BY fetched_at DESC LIMIT 1`,
+        `SELECT id, url, source, relevance_score, hairstyles, attribution_metadata, caption
+         FROM images 
+         WHERE barber_id = $1 AND COALESCE(relevance_score, 0) > 0.5
+         ORDER BY relevance_score DESC NULLS LAST, fetched_at DESC 
+         LIMIT 20`,
         [barberInternalId]
       );
-      if (imgQ.rowCount && imgQ.rows[0].url) {
-        out.thumbnail_url = imgQ.rows[0].url;
+      
+      if (imgQ.rowCount) {
+        out.gallery = imgQ.rows.map(img => ({
+          id: img.id,
+          url: img.url,
+          source: img.source,
+          relevance_score: img.relevance_score,
+          hairstyles: img.hairstyles || [],
+          attribution: img.attribution_metadata || null,
+          caption: img.caption || null
+        }));
+        out.thumbnail_url = imgQ.rows[0].url; // First image as thumbnail
       } else if (shop && shop.id) {
-        const sImgQ = await pool.query(`SELECT url FROM images WHERE shop_id = $1 ORDER BY fetched_at DESC LIMIT 1`, [shop.id]);
-        if (sImgQ.rowCount && sImgQ.rows[0].url) out.thumbnail_url = sImgQ.rows[0].url;
+        // Fallback to shop images if no barber-specific images
+        const sImgQ = await pool.query(
+          `SELECT id, url, source, relevance_score, hairstyles, attribution_metadata, caption
+           FROM images 
+           WHERE shop_id = $1 AND COALESCE(relevance_score, 0) > 0.5
+           ORDER BY relevance_score DESC NULLS LAST, fetched_at DESC 
+           LIMIT 20`,
+          [shop.id]
+        );
+        if (sImgQ.rowCount) {
+          out.gallery = sImgQ.rows.map(img => ({
+            id: img.id,
+            url: img.url,
+            source: img.source,
+            relevance_score: img.relevance_score,
+            hairstyles: img.hairstyles || [],
+            attribution: img.attribution_metadata || null,
+            caption: img.caption || null,
+            from_shop: true
+          }));
+          out.thumbnail_url = sImgQ.rows[0].url;
+        } else {
+          out.gallery = [];
+        }
+      } else {
+        out.gallery = [];
       }
     } catch (imgErr) {
       console.error('barbers/:id image query error', imgErr);
+      out.gallery = [];
     }
 
     // Attach recent sanitized LLM-enriched comments (if available) from reviews.

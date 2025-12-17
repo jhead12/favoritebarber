@@ -82,7 +82,8 @@ export default function ShopPage(): React.ReactElement {
             trust: Number(raw.trust_score) || 0,
             specialties: [],
             price: '$$?',
-            thumb: raw.images && raw.images.length ? raw.images[0].url : ''
+            thumb: raw.images && raw.images.length ? raw.images[0].url : '',
+            images: raw.images || []
           } as any;
           setGallery((raw.images || []).map((i: any) => i.url).filter(Boolean));
           setBarber(ui);
@@ -128,6 +129,26 @@ export default function ShopPage(): React.ReactElement {
       <p><strong>Distance:</strong> {barber.distance}</p>
       <p><strong>Trust:</strong> {barber.trust}</p>
       <p><strong>Specialties:</strong> {barber.specialties?.join ? barber.specialties.join(', ') : JSON.stringify(barber.specialties)}</p>
+      {(() => {
+        // Aggregate unique hairstyles from enriched images
+        const allHairstyles = new Set<string>();
+        if (gallery && gallery.length > 0) {
+          // Gallery may contain raw image objects from API
+          const rawImages = (barber as any).images || [];
+          rawImages.forEach((img: any) => {
+            if (img.hairstyles && Array.isArray(img.hairstyles)) {
+              img.hairstyles.forEach((style: string) => allHairstyles.add(style));
+            }
+          });
+        }
+        const hairstyles = Array.from(allHairstyles).sort();
+        if (hairstyles.length > 0) {
+          return (
+            <p><strong>Detected Hairstyles:</strong> {hairstyles.join(', ')}</p>
+          );
+        }
+        return null;
+      })()}
       {socialProfiles && socialProfiles.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <h4>Social profiles</h4>
