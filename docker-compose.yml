@@ -22,6 +22,10 @@ services:
     environment:
       DATABASE_URL: "postgresql://postgres:password@postgres:5432/rateyourbarber"
       REDIS_URL: "redis://redis:6379"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SENTRY_DSN: ${SENTRY_DSN}
+      USE_YELP_GRAPHQL: ${USE_YELP_GRAPHQL}
+      ENABLE_COST_TRACKING: ${ENABLE_COST_TRACKING}
     env_file:
       - ./.env
     ports:

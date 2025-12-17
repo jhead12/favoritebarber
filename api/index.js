@@ -2,9 +2,11 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const { requestLoggerMiddleware, logger } = require('./lib/logger');
 const { pool } = require('./db');
 const { queryYelpGraphql } = require('./yelp_graphql');
 const { mapRestBusiness, mapGraphqlBusiness } = require('./lib/yelp_normalize');
+const { acquireYelpToken } = require('./lib/mcpRateLimiter');
 const userRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
 const agentsRoutes = require('./routes/agents');
@@ -14,6 +16,7 @@ const adminRoutes = require('./routes/admin');
 const geocodeRoutes = require('./routes/geocode');
 const reviewCandidatesRoutes = require('./routes/review_candidates');
 const reviewsRoutes = require('./routes/reviews');
+const claimsRoutes = require('./routes/claims');
 const { requireAuth } = require('./middleware/auth');
 const { requireMcpAuth } = require('./middleware/mcpAuth');
 const { mcpRateLimitMiddleware } = require('./lib/mcpRateLimiter');
@@ -22,6 +25,7 @@ const app = express();
 const YELP_API_KEY = process.env.YELP_API_KEY;
 app.use(cors());
 app.use(express.json());
+app.use(requestLoggerMiddleware);
 
 // Mount auth routes (public)
 app.use('/api/auth', authRoutes);
@@ -48,6 +52,9 @@ app.use('/api/reviews', reviewsRoutes);
 
 // Mount user routes (protected)
 app.use('/api/users', requireAuth, userRoutes);
+
+// Mount claims routes (profile claiming)
+app.use('/api/claims', claimsRoutes);
 
 // MCP gateway routes (partner-facing). auth + rate-limit enforced here.
 app.use('/api/mcp', requireMcpAuth, mcpRateLimitMiddleware, mcpRoutes);
@@ -77,6 +84,15 @@ app.get('/api/yelp-search', async (req, res) => {
       url.searchParams.set('location', String(location));
     }
 
+    // Enforce combined Yelp quota (REST + GraphQL)
+    try {
+      const accountId = (req.mcp && req.mcp.partnerId) || process.env.YELP_ACCOUNT_ID || 'default';
+      const q = await acquireYelpToken({ accountId, cost: 1 });
+      if (!q || !q.ok) return res.status(429).json({ error: 'yelp_quota_exceeded', detail: q });
+    } catch (e) {
+      console.warn('acquireYelpToken failed for /api/yelp-search', e);
+    }
+
     const yelpRes = await fetch(url.toString(), {
       headers: { Authorization: `Bearer ${YELP_API_KEY}` },
     });
@@ -100,7 +116,7 @@ app.get('/api/yelp-search', async (req, res) => {
     }));
     res.json({ results: mapped });
   } catch (err) {
-    console.error('Yelp proxy error', err);
+    logger.error({ err, route: '/api/yelp-search' }, 'Yelp proxy error');
     res.status(500).json({ error: 'proxy_failed' });
   }
 });
@@ -108,12 +124,20 @@ app.get('/api/yelp-search', async (req, res) => {
 // Proxy to fetch a single Yelp business by id
 app.get('/api/yelp-business/:id', async (req, res) => {
   const { id } = req.params || {};
-  console.log('[API] yelp-business request for id:', id);
+  logger.info({ id }, '[API] yelp-business request');
   if (!YELP_API_KEY) {
     return res.status(400).json({ error: 'missing_yelp_api_key', message: 'YELP_API_KEY not configured' });
   }
   try {
     const url = `https://api.yelp.com/v3/businesses/${encodeURIComponent(id)}`;
+    try {
+      const accountId = (req.mcp && req.mcp.partnerId) || process.env.YELP_ACCOUNT_ID || 'default';
+      const q = await acquireYelpToken({ accountId, cost: 1 });
+      if (!q || !q.ok) return res.status(429).json({ error: 'yelp_quota_exceeded', detail: q });
+    } catch (e) {
+      console.warn('acquireYelpToken failed for /api/yelp-business', e);
+    }
+
     const yelpRes = await fetch(url, { headers: { Authorization: `Bearer ${YELP_API_KEY}` } });
     if (!yelpRes.ok) {
       const txt = await yelpRes.text();
@@ -124,7 +148,7 @@ app.get('/api/yelp-business/:id', async (req, res) => {
     const out = mapRestBusiness(b) || {};
     res.json(out);
   } catch (err) {
-    console.error('yelp-business proxy error', err);
+    logger.error({ err, route: '/api/yelp-business/:id' }, 'yelp-business proxy error');
     res.status(500).json({ error: 'proxy_failed' });
   }
 });
@@ -158,7 +182,7 @@ app.get('/api/yelp-graphql/business/:id', async (req, res) => {
     const out = mapGraphqlBusiness(b) || {};
     res.json(out);
   } catch (err) {
-    console.error('yelp-graphql proxy error', err);
+    logger.error({ err, route: '/api/yelp-graphql/business/:id' }, 'yelp-graphql proxy error');
     res.status(500).json({ error: 'graphql_proxy_failed' });
   }
 });
@@ -201,7 +225,7 @@ app.get('/api/search', async (req, res) => {
     }));
     res.json(results);
   } catch (err) {
-    console.error(err);
+    logger.error({ err, route: '/api/search' }, 'DB error');
     res.status(500).json({ error: 'DB error' });
   }
 });
@@ -268,6 +292,14 @@ app.get('/api/yelp-cached-search', async (req, res) => {
       url.searchParams.set('location', String(req.query.location));
     }
 
+    try {
+      const accountId = (req.mcp && req.mcp.partnerId) || process.env.YELP_ACCOUNT_ID || 'default';
+      const q = await acquireYelpToken({ accountId, cost: 1 });
+      if (!q || !q.ok) return res.status(429).json({ error: 'yelp_quota_exceeded', detail: q });
+    } catch (e) {
+      console.warn('acquireYelpToken failed for /api/yelp-cached-search', e);
+    }
+
     const yRes = await fetch(url.toString(), { headers: { Authorization: `Bearer ${YELP_API_KEY}` } });
     if (!yRes.ok) {
       const txt = await yRes.text().catch(() => null);
@@ -307,7 +339,7 @@ app.get('/api/yelp-cached-search', async (req, res) => {
       await client.query('COMMIT');
     } catch (e) {
       await client.query('ROLLBACK');
-      console.error('persist yelp businesses failed', e);
+      logger.error({ err: e }, 'persist yelp businesses failed');
     } finally {
       client.release();
     }
@@ -318,11 +350,11 @@ app.get('/api/yelp-cached-search', async (req, res) => {
       const enqueue = require('./jobs/scoreRecomputation'); // reuse jobs loader; adapt if needed
       // lightweight enqueue: push IDs to Redis or a job table — here we just log for now
       results.slice(0,3).forEach(r => console.log('[ENQUEUE] graphql-enrich', r.id));
-    } catch (e) {}
+    } catch (e) { logger.warn({ err: e }, 'enqueue graphql enrich failed'); }
 
     return res.json({ results, source: 'yelp' });
   } catch (err) {
-    console.error('yelp-cached-search error', err);
+    logger.error({ err, route: '/api/yelp-cached-search' }, 'yelp-cached-search error');
     return res.status(500).json({ error: 'internal_error' });
   }
 });
@@ -338,4 +370,4 @@ const searchRoutes = require('./routes/search');
 app.use('/api/search', searchRoutes);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`API server listening on port ${PORT}`));
+app.listen(PORT, () => logger.info({ port: PORT, env: process.env.NODE_ENV }, 'API server listening'));

@@ -72,23 +72,59 @@ For privacy-first text analysis (name extraction, sentiment, summarization), thi
    - `workers/llm/review_parser.js` — Wrapper for batch review parsing
    - Review enrichment: The Yelp fetcher can call `parseReview()` to extract sentiment, names, and summaries from reviews without sending data to external APIs.
 
+## Critical Path & Sequencing
+
+**Goal**: Get a reviewable website with real barber data ASAP, then enhance with LLM features.
+
+1. **Phase 0** — Infrastructure baseline (logging, Redis, error tracking, dashboards)
+2. **Yelp GraphQL Phases 1-7** — Complete data ingestion pipeline (audit → workers → testing)
+   - Phase 1-2: Audit and map use cases
+   - Phase 3: Validate GraphQL client
+   - Phase 4: Update ingestion workers to fetch barber data
+   - Phase 5: Rate-limiting and caching
+   - Phase 6: DB schema for GraphQL fields
+   - Phase 7: Integration tests with recorded fixtures
+3. **Basic Frontend** — Display barbers, reviews, photos (no LLM enrichment yet)
+4. **Phase A** — Data foundation (seed testbed for LLM testing)
+5. **Phase B** — LLM test harness (golden dataset, mock provider, benchmarks)
+6. **LLM Provider Expansion** — Add Ollama-based enrichment to existing reviews
+7. **Phase F.1** — Claim & Curate (high user value, unblocks barber feedback)
+8. **Phase F.2** — Trust & Verification (spam detection, verified badges)
+9. **Phase D** — MCP rollout (after Yelp + LLM stabilize)
+10. **Phase E/F.3** — Visual search, social feed (differentiators)
+
+Critical dependencies:
+- **Don't start LLM work until you have real review data to enrich** (Yelp ingestion must work first)
+- Don't start GraphQL worker integration (Phase 4) until audit (Phase 1-2) completes
+- Don't roll out MCP until Yelp GraphQL quota management is proven
+- Phase 0 infrastructure must complete before scaling any ingestion
+- Frontend display can start in parallel with Yelp Phase 6-7 (once data exists in DB)
+
     ### Todo
     - Set up other LLM Providers
-    - Atropic
+    - Anthropic
     - MCP servers
-       - Define MCP roadmap for both internal tools and external partners
-       - Complete Yelp GraphQL Phases 1–4 (audit, use-case split, prototype client, worker updates) before full MCP rollout
+       - **Prerequisite**: Write `docs/MCP_ROADMAP.md` defining:
+         - Partner personas and use cases (who will use MCP and why)
+         - API surface (endpoints, schema, GraphQL vs REST)
+         - Auth model (OAuth2, API keys, or hybrid)
+         - Rate limits per partner tier and revenue model
+       - Complete Yelp GraphQL Phases 1–4 before full MCP rollout
        - Clarify partner onboarding, auth scopes, and rate-limiting ownership (MCP enforces partner quotas; workers remain independent)
-       - Link to `docs/MCP_DESIGN.md` for detailed design and next steps
+       - Implement MCP telemetry hooks to track partner usage, quota consumption
+       - Link to `docs/MCP_DESIGN.md` for technical implementation details
 
       ### LLM Provider Expansion TODO
       - Goal: support a broad open-source LLM ecosystem while keeping Ollama for local/dev.
-      - Adapters to add (priority): `huggingface` (Inference API/TGI), `vllm`/`tgi` (self-hosted), `replicate`, `gpt4all`/`llama.cpp`, plus existing `openai`/`anthropic` adapters.
+      - **Strategy**: Implement ONE provider thoroughly before expanding (reduces integration risk).
+      - Adapters to add (priority): `huggingface` (Inference API/TGI) **FIRST**, then `vllm`/`tgi` (self-hosted), `replicate`, `gpt4all`/`llama.cpp`, plus existing `openai`/`anthropic` adapters, Grok, Gemini.
+      - **Risk mitigation**: Each provider has different error modes, rate limits, streaming APIs — parallel implementation risks technical debt.
       - Implementation notes:
          - Add `workers/llm/llm_client.js` facade and `workers/llm/providers/*` adapters (one file per provider).
          - Support env vars: `LLM_PROVIDER`, `LLM_PROVIDER_FALLBACK` (comma-separated), `LLM_TIMEOUT_MS`, `LLM_MAX_RETRIES`, and provider keys like `HF_API_KEY`, `REPLICATE_API_KEY`.
          - Add a provider capability registry (streaming, embeddings, function-calling) to choose appropriate model calls.
-         - Persist enrichment metadata: add migration to store `enriched_provider` and `enriched_model` on `reviews`.
+         - Persist enrichment metadata: add migration to store `enriched_provider`, `enriched_model`, and `prompt_version` on `reviews`.
+         - Store raw LLM responses in `llm_enrichment_logs` table for debugging and re-enrichment.
          - Enforce license/commercial checks before enabling community models (document onboarding in `docs/`).
       - Safety & ops:
          - Add pre-send moderation/masking for PII, telemetry (latency, token counts, errors), and per-provider quotas with canary rollout.
@@ -105,31 +141,82 @@ If Ollama is not running, all LLM functions degrade to local heuristics (regex N
 2. Implement crawler logic in `workers/crawlers/yelp_fetcher.ts` and run workers.
 3. Implement API endpoints and wire database connection.
 
+## Phase 0 — Infrastructure Baseline
+
+**Goal**: Establish observability, reliability, and cost controls before scaling ingestion.
+
+**Status**: completed
+
+Completed work
+- Structured logging with correlation IDs (Pino): `api/lib/logger.js` — request middleware, correlation IDs, and external call timing helper.
+- Circuit breaker utility: `api/lib/circuitBreaker.js` — simple open/half-open/closed breaker with timeout support.
+- Cost/quota tracker: `api/lib/costTracker.js` — in-memory totals + log sink (extendable to Redis).
+- Integrated logger into the API startup and key routes (`api/index.js`) so external calls and DB errors emit structured logs.
+- Added `LOG_LEVEL`, `SENTRY_DSN`, `USE_YELP_GRAPHQL`, and `ENABLE_COST_TRACKING` to `.env.example` and `docker-compose.yml`.
+- Added `pino` and `pino-pretty` to `api/package.json` dependencies for local-friendly logs.
+
+Notes & next steps
+- Grafana/Prometheus services are still optional; I can add a commented compose snippet if you want local dashboards.
+- Next recommended changes: wrap Yelp and LLM client calls with the circuit breaker and call `costTracker.record()` on responses so quota/cost telemetry is emitted.
+
+**Files added/modified**:
+- `api/lib/logger.js`
+- `api/lib/circuitBreaker.js`
+- `api/lib/costTracker.js`
+- `api/index.js` (wired logger middleware and replaced console.* with structured logs)
+- `.env.example` (added observability envs)
+- `docker-compose.yml` (exposed new envs for api service)
+- `api/package.json` (added pino deps)
+
+**Exit criteria status**: Phase 0 items implemented and wired into API; recommend enabling Sentry and wiring the breaker into external clients next.
 
 
 ## Yelp GraphQL TODOs
 
 This section tracks the phased plan to add Yelp GraphQL support and a hybrid GraphQL/REST strategy. Update the "Status" and remove or replace the "Begin marker" when work on each phase starts.
 
+Decisions (implemented/approved):
+- **Testing priority**: unit tests for the GraphQL normalizer first, then end-to-end worker integration tests.
+- **Quota strategy**: REST and GraphQL quota are tracked together under one Redis-backed Yelp counter. Quota enforcement is now wired into the API GraphQL client and core REST endpoints so all outbound Yelp calls share the same counter.
+- **Client implementation**: migrate the raw `axios` POST to `graphql-request` for clearer error shapes and typed queries. Work started: `api/yelp_graphql.js` is being migrated.
+
 - **Phase 1 — Audit current Yelp usage**
    - **Goal**: Find all existing Yelp REST calls in the repo and document which fields are requested and why (files, endpoints, and purpose).
    - **Status**: not-started
    - **Begin marker**: BEGIN-PHASE-1
+   - **Action items**:
+     - Search codebase for Yelp API calls (`grep -r "yelp" api/ workers/`)
+     - Document endpoints used, fields requested, and why (create `docs/YELP_AUDIT.md`)
+     - Identify which calls are for discovery (lists) vs enrichment (details)
+     - Map current rate-limit/quota usage patterns
 
 - **Phase 2 — Define GraphQL vs REST use cases**
    - **Goal**: Map required data fields to GraphQL queries or REST endpoints; decide which workflows need GraphQL.
    - **Status**: not-started
    - **Begin marker**: BEGIN-PHASE-2
+   - **Action items**:
+     - For each field in Phase 1 audit, determine if available via GraphQL
+     - Create decision matrix: "Use GraphQL for X, REST for Y"
+     - Recommended split: GraphQL for enrichment (photos, hours, reviews), REST for search/discovery
+     - Document in `docs/YELP_AUDIT.md` under "GraphQL Strategy" section
 
 - **Phase 3 — Prototype GraphQL client**
    - **Goal**: Add a lightweight GraphQL client module (e.g., `api/yelp_graphql.js`) with auth and a sample `Business` query; validate against 5 sample businesses.
    - **Status**: in-progress
    - **Begin marker**: BEGIN-PHASE-3 (in-progress)
+   - **Implementation note**: client migration to `graphql-request` has been started in `api/yelp_graphql.js` (timeout + retry wrapper added).
 
-- **Phase 4 — Update ingestion workers**
+- **Phase 4 — Update ingestion workers** ⚠️ **CRITICAL FOR REVIEWABLE WEBSITE**
    - **Goal**: Modify ingestion workers to use GraphQL for enrichment (details, photos, hours) and fall back to REST for bulk lists; add a feature-flag toggle.
    - **Status**: not-started
    - **Begin marker**: BEGIN-PHASE-4
+   - **Action items**:
+     - Update `workers/crawlers/yelp_fetcher.ts` to call GraphQL client for business details
+     - Implement fallback: if GraphQL fails, use REST endpoint
+     - Add feature flag: `USE_YELP_GRAPHQL=true` in `.env`
+     - Update `workers/enrichment_worker.js` to fetch photos, hours via GraphQL
+     - Store raw GraphQL responses in `sources.raw_data` for debugging
+     - Add telemetry: log which API (GraphQL vs REST) was used per request
 
 - **Phase 5 — Implement rate-limiting & caching**
    - **Goal**: Add a request queue/token-bucket and Redis-backed caching to respect GraphQL endpoint-capture limits and REST quotas; add retries/backoff.
@@ -140,6 +227,12 @@ This section tracks the phased plan to add Yelp GraphQL support and a hybrid Gra
    - **Goal**: Add DB schema changes to store GraphQL-provided fields and image attributions; create migration SQL in `api/migrations/`.
    - **Status**: not-started
    - **Begin marker**: BEGIN-PHASE-6
+   - **Action items**:
+     - Add columns to `barbers`: `yelp_categories` (jsonb), `price_range` (text), `transactions` (text[])
+     - Add columns to `locations`: `hours` (jsonb), `is_claimed` (boolean)
+     - Add columns to `images`: `yelp_attribution_url` (text), `yelp_user_name` (text)
+     - Create migration: `api/migrations/0XX_add_yelp_graphql_fields.sql`
+     - Update `api/lib/yelp_normalize.js` to map GraphQL response → DB schema
 
 - **Phase 7 — Testing & validation**
    - **Goal**: Add unit tests for the GraphQL client, integration tests for ingestion with recorded responses, and a quota-simulation test.
@@ -156,5 +249,207 @@ This section tracks the phased plan to add Yelp GraphQL support and a hybrid Gra
 Notes:
 - Use GraphQL selectively for high-value enrichment (photos, hours, categories); use REST for high-volume discovery and polling.
 - Track GraphQL endpoint-capture and REST request quotas in telemetry and alert at 70%/90% thresholds.
+
+### Strategy Additions (recommended)
+
+To strengthen product-market fit and data quality, consider these additions to the roadmap:
+
+- **Claim & Curate:** allow barbers to claim generated profiles (`claim_profile` API). After claiming, enable portfolio uploads and an onboarding flow (SMS/social verification) so barbers can curate their images and contact info.
+
+- **Visual Style Search:** add image embeddings (CLIP/vision-LM) and `pgvector` to enable semantic visual searches ("high fade with design") rather than only text queries.
+
+- **Social Feed Integration:** enrich profiles with the latest public social thumbnails via oEmbed or a safe crawler (cache thumbnails and post timestamps) so users see recent work on the profile page.
+
+- **Trust & Verification:** extend the trust model with verification signals (photo-at-location, receipt uploads), and use LLM moderation to detect spam or coordinated review attacks before they affect scores.
+
+These features improve engagement for barbers and trust for end users; they can be rolled out incrementally (claiming → feed → embeddings → verification).
+
+### How to try Barber Claiming locally
+
+1. Apply the new migration added in this branch:
+
+```bash
+npm --prefix api run migrate
+```
+
+2. Start the API and call the claim endpoint (replace IDs):
+
+```bash
+# request a claim
+curl -X POST http://localhost:3000/api/claims/claim-profile \
+   -H 'Content-Type: application/json' \
+   -d '{"barber_profile_id":1,"user_id":"<your-user-uuid>","evidence_url":"https://example.com/photo.jpg"}'
+
+# check claim status
+curl http://localhost:3000/api/claims/1/status
+```
+
+3. Next steps after claiming: add an admin UI to approve/reject and a small verification flow (SMS or social link). I can scaffold these if you want.
+
+## Completion Plan & LLM Testing Optimization
+
+This project plan focuses on finishing core features and enabling robust, repeatable LLM testing across providers.
+
+### Phase A — Data Foundation
+- Seed realistic LLM test data: add `api/scripts/seed_llm_testbed.js` to insert 50+ varied reviews (short/long, multi-name, non-English, spam patterns).
+- Ensure `enriched_provider` / `enriched_model` / `prompt_version` are present (see `api/migrations/026_add_enriched_provider_metadata.sql`) so enrichment provenance is recorded.
+- Add `profile_claims` audit table migration to persist claim history.
+
+### Phase A.5 — Data Quality Pipeline
+- **Deduplication**: Fuzzy-match barber names/addresses to detect duplicate Yelp listings.
+- **Geocoding validation**: Cross-check Yelp coordinates against Google Maps API; flag outliers.
+- **Image relevance**: Extend `workers/image_processor.js` to filter non-barber images (SafeSearch + label detection).
+- **Review authenticity**: Detect suspicious patterns (all 5-star from new accounts, bot language).
+- Add `api/jobs/dataQualityAudit.js` cron job to periodically re-score trust signals.
+
+**Files to create**:
+- `api/lib/deduplicator.js` — fuzzy matching logic
+- `api/lib/reviewAuthenticityChecker.js` — spam/bot detection heuristics
+- `api/migrations/0XX_add_duplicate_candidates.sql` — table for flagged duplicates
+
+### Phase B — LLM Test Harness
+- Add a formal test runner (Vitest or Jest) to the repo and wire `npm` scripts for `test:llm`, `test:llm:benchmark`, and `test:llm:live`.
+- Create a golden dataset: `tests/fixtures/llm_golden.json` (50+ labeled cases with expected `names`, `sentiment`, `summary` assertions).
+  - Include adversarial cases: all-caps reviews, emoji spam, non-English, multi-name edge cases
+- Add a CI-safe mock provider: `workers/llm/providers/mock.js` used by CI to run deterministic LLM tests.
+- Add `workers/llm/benchmark_providers.js` to run the golden dataset against configured providers and emit latency/accuracy/cost metrics.
+
+### Phase B.5 — Integration & Load Testing
+- **Load testing**: Add Locust or k6 scripts to simulate 1000 concurrent review enrichments.
+- **Quota exhaustion simulation**: Test behavior when Yelp GraphQL hits daily limit mid-day.
+- **Chaos engineering**: Randomly fail Redis, Postgres, Yelp API to validate circuit breakers.
+- **Regression detection**: Automated CI check comparing new LLM provider outputs against golden dataset (fail build if accuracy drops >10%).
+
+**Files to create**:
+- `tests/load/enrichment_load_test.js` — k6 or Locust script
+- `tests/chaos/simulate_failures.sh` — Docker Compose chaos scenarios
+
+### Phase C — GraphQL & Enrichment
+- Finalize Yelp GraphQL validation against Yelp schema and expand recorded fixtures (`tests/fixtures/yelp_graphql/`).
+- Update ingestion workers to optionally use GraphQL for enrichment (photos/hours) with feature-flag toggles.
+- Add Redis-backed rate-limiter or token-bucket for GraphQL calls to prevent quota exhaustion.
+
+### Phase D — MCP & Production Readiness
+- **Prerequisite**: Complete `docs/MCP_ROADMAP.md` (partner personas, API surface, auth model, rate limits).
+- Implement MCP telemetry hooks to record partner calls, yelp_quota_cost, and LLM provider usage.
+- Add production-grade MCP rate limiter (Redis) and expose partner-scoped quotas.
+- Create partner onboarding flow: API key generation, quota assignment, documentation.
+
+### Phase E — Advanced Product Features
+- **Visual search**: Scaffold `workers/image_embedder.js` and add `pgvector` migration to enable semantic image search.
+  - Add DB indexes for vector similarity queries (HNSW or IVFFlat).
+  - Implement query optimization for large-scale embedding searches.
+- **Social feed thumbnails**: Extend `workers/crawlers/yelp_to_socials.js` to fetch oEmbed thumbnails and cache them for profiles.
+- Use cached data for visualization analysis.
+
+### Phase F — Core Product Features (High Priority)
+
+#### Phase F.1 — Claim & Curate
+- **Goal**: Allow barbers to claim and manage their profiles (critical for engagement).
+- Enable portfolio uploads after claim approval.
+- Add onboarding flow with SMS or social verification.
+- Build admin UI to approve/reject claims.
+- **Files**: Already exists in `api/routes/claims.js`, add admin UI in `web/pages/admin/claims.tsx`.
+
+#### Phase F.2 — Trust & Verification
+- **Goal**: Prevent spam and build user trust.
+- Add verification signals: photo-at-location (EXIF GPS), receipt uploads, business license checks.
+- Implement LLM-powered moderation to detect coordinated review attacks.
+- Add "Verified" badge to profiles meeting trust thresholds.
+- Add user-facing "Report Spam" button.
+- **Files**:
+  - `api/lib/trustScorer.js` — calculate trust score from signals
+  - `api/migrations/0XX_add_verification_signals.sql`
+  - `workers/llm/moderator.js` — LLM-based review moderation
+
+#### Phase F.3 — Social Feed & Visual Polish
+- Display recent Instagram/social thumbnails on profile pages.
+- Add visual portfolio carousel for claimed profiles.
+- Optional: implement "style inspiration" board (user saves favorite cuts). 
+
+LLM Testing Optimizations (how to run robust tests)
+- Golden dataset: store labeled cases in `tests/fixtures/llm_golden.json` and add a test `tests/llm/golden.spec.js` asserting outputs from `workers/llm/llm_client.js`.
+- Mock provider for CI: `workers/llm/providers/mock.js` returns deterministic outputs; set `LLM_PROVIDER=mock` in CI.
+- Provider benchmarking: use `workers/llm/benchmark_providers.js` to compare `ollama`, `openai`, `huggingface`, `replicate` on the golden dataset and record latency/accuracy/cost.
+- Telemetry: instrument `workers/llm/llm_client.js` to record `provider`, `model`, `latency_ms`, `success`, and `token_counts` to a lightweight metrics table or logs for offline analysis.
+- A/B experiments: implement `enrichment_strategy` flag to route a percentage of reviews to different providers and compare outputs using the golden dataset labels.
+
+Quick commands
+```bash
+# Run migrations and seed LLM testbed
+npm --prefix api run migrate
+node api/scripts/seed_llm_testbed.js
+
+# Run the golden dataset tests (local, requires provider keys for live runs)
+npm run test:llm
+
+# Run provider benchmark (live)
+node workers/llm/benchmark_providers.js --providers=ollama,openai,huggingface
+
+# Use mock provider in CI
+export LLM_PROVIDER=mock
+```
+
+Immediate next steps I can implement now
+- Scaffold `api/scripts/seed_llm_testbed.js` and create `tests/fixtures/llm_golden.json` (I can generate seed cases). 
+- Add `workers/llm/providers/mock.js` and a `benchmark_providers.js` harness. 
+- Add Vitest as test runner and wire `package.json` scripts for LLM tests.
+
+---
+
+## Implementation Priority Summary
+
+**Philosophy**: Get real barber data flowing and displayable FIRST, then add LLM enrichment as enhancement.
+
+Based on dependencies and business value, implement in this order:
+
+### Immediate (Weeks 1-2) — Foundation
+1. **Phase 0** — Infrastructure baseline (logging, Redis, monitoring, feature flags)
+2. **Yelp GraphQL Phase 1-2** — Audit current Yelp usage, document use cases
+3. **Yelp GraphQL Phase 3** — Complete and validate GraphQL client (already in-progress)
+
+### Short-term (Weeks 3-4) — Get Data Flowing ⚠️ **CRITICAL PATH**
+4. **Yelp GraphQL Phase 4** — Update ingestion workers to fetch barber data via GraphQL
+5. **Yelp GraphQL Phase 5** — Rate-limiting and Redis caching
+6. **Yelp GraphQL Phase 6** — DB schema migrations for GraphQL fields
+7. **Yelp GraphQL Phase 7** — Integration tests with recorded fixtures
+
+### Short-term (Weeks 5-6) — Reviewable Website MVP
+8. **Basic Frontend** — Display barbers, reviews, photos (wire existing `web/` stubs to API)
+   - `web/pages/search.tsx` — search barbers by location
+   - `web/pages/barber/[id].tsx` — profile with reviews and photos
+   - `web/components/ReviewList.tsx` — display reviews (no LLM sentiment yet)
+9. **Manual verification** — Verify 10+ real barber profiles display correctly
+
+### Medium-term (Weeks 7-9) — LLM Enrichment Layer
+10. **Phase A** — Seed LLM testbed data
+11. **Phase B** — LLM test harness with golden dataset and mock provider
+12. **LLM Integration** — Add Ollama-based enrichment to existing reviews
+    - Sentiment scoring
+    - Barber name extraction
+    - Review summarization
+13. **Phase A.5** — Data quality pipeline (deduplication, authenticity checks)
+
+### Medium-term (Weeks 10-12) — User Engagement
+14. **Phase F.1** — Claim & Curate (high user value, unblocks barber engagement)
+15. **Phase F.2** — Trust & Verification (spam detection, verified badges)
+16. **Phase B.5** — Load testing and chaos engineering
+
+### Long-term (Weeks 13+) — Scale & Polish
+17. **LLM Provider Expansion** — Add Hugging Face adapter (battle-test before expanding)
+18. **Yelp GraphQL Phase 8** — Deploy to staging and monitor production usage
+19. **Phase D** — MCP rollout (after Yelp + LLM stabilize)
+20. **Phase E** — Visual search with pgvector
+21. **Phase F.3** — Social feed thumbnails and visual polish
+
+### Key Principles
+- **Data first, AI second**: Complete Yelp ingestion (Phases 1-7) before LLM work — can't enrich data you don't have.
+- **Reviewable early**: Prioritize basic frontend display over sophisticated enrichment.
+- **Don't parallelize risky work**: Complete Yelp audit before prototyping, one LLM provider before expanding.
+- **Fail fast**: Phase 0 infrastructure catches quota/cost issues early.
+- **Test before scale**: Phase B harness prevents production LLM regressions.
+- **LLM is enhancement, not requirement**: Website should work with un-enriched reviews.
+
+If you want, I can start by generating the seed/test dataset and adding the mock provider and test harness. 
 
 
