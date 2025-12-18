@@ -13,4 +13,5 @@ COPY . .
 ENV NODE_ENV=development
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+# Start Next.js and bind to 0.0.0.0 for container accessibility
+CMD ["npx", "next", "dev", "-p", "3001", "-H", "0.0.0.0"]

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
-const llm = require('../../workers/llm/llm_client');
+// const llm = require('../../workers/llm/llm_client'); // TODO: restore when Docker build includes workers
 const { requireScope } = require('../middleware/mcpAuth');
 const { trackYelpCall } = require('../lib/mcpTelemetry');
 const { createWebhookSubscription } = require('../lib/mcpWebhooks');
