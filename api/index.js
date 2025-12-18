@@ -459,9 +459,14 @@ app.get('/api/yelp-cached-search', async (req, res) => {
 
 app.get('/', (req, res) => res.send('Rate Your Barber API'));
 
-// Initialize background jobs
+// Initialize background jobs (skip when running tests or when explicitly disabled)
 const { initializeJobs } = require('./jobs/scoreRecomputation');
-initializeJobs();
+const _disableJobs = process.env.DISABLE_JOBS === 'true' || process.env.NODE_ENV === 'test';
+if (!_disableJobs) {
+  initializeJobs();
+} else {
+  logger.info({ disableJobs: _disableJobs }, '[JOBS] Background jobs disabled (NODE_ENV=test or DISABLE_JOBS=true)');
+}
 
 // Mount POST /api/search to enqueue background discovery jobs
 const searchRoutes = require('./routes/search');
