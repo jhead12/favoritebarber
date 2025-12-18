@@ -134,8 +134,25 @@ async function run({ yelpId = null, name = null, location = null, dryRun = true 
     const yelpPage = business.url || `https://www.yelp.com/biz/${business.id}`;
     console.log('Yelp page ->', yelpPage);
 
-    const external = await scrapeYelpForExternal(yelpPage, browser);
-    console.log('Found external links on Yelp page:', external.length);
+    // PRIORITY 1: Check if business has a website URL (from Yelp API)
+    // The website is the PRIMARY source for finding official social media links
+    // Yelp API may provide website in: business.website, business.businessUrl, or similar fields
+    let externalLinks = [];
+    const businessWebsite = business.website || business.businessUrl || business.external_url || null;
+    
+    if (businessWebsite && businessWebsite !== yelpPage) {
+      console.log('Found business website from Yelp API:', businessWebsite);
+      externalLinks.push(businessWebsite);
+    }
+
+    // PRIORITY 2: Scrape Yelp page for additional external links
+    const yelpPageLinks = await scrapeYelpForExternal(yelpPage, browser);
+    console.log('Found external links on Yelp page:', yelpPageLinks.length);
+    
+    // Combine: website first, then other external links (deduplicated)
+    externalLinks = [...externalLinks, ...yelpPageLinks];
+    const external = Array.from(new Set(externalLinks));
+    console.log('Total unique external links to check:', external.length);
 
     const results = [];
     for (const ext of external) {

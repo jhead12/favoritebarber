@@ -65,6 +65,11 @@ app.use('/api/users', requireAuth, userRoutes);
 // Mount claims routes (profile claiming)
 app.use('/api/claims', claimsRoutes);
 
+// MCP health endpoint (public, no auth required)
+app.get('/api/mcp/health', (req, res) => {
+  res.json({ ok: true, time: new Date().toISOString(), service: 'mcp' });
+});
+
 // MCP gateway routes (partner-facing). auth + rate-limit + telemetry enforced here.
 app.use('/api/mcp', requireMcpAuth, mcpRateLimitMiddleware, mcpTelemetryMiddleware, mcpRoutes);
 

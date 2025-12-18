@@ -83,7 +83,9 @@ export default function ShopPage(): React.ReactElement {
             specialties: [],
             price: '$$?',
             thumb: raw.images && raw.images.length ? raw.images[0].url : '',
-            images: raw.images || []
+            images: raw.images || [],
+            barbers: raw.barbers || [],  // Include barbers array for display
+            website: raw.website || null
           } as any;
           setGallery((raw.images || []).map((i: any) => i.url).filter(Boolean));
           setBarber(ui);
@@ -125,7 +127,40 @@ export default function ShopPage(): React.ReactElement {
         <button onClick={() => router.back()} style={{ padding: '6px 10px' }}>← Back</button>
       </div>
       <h1>{barber.name}</h1>
+      {(() => {
+        const rawBarber = barber as any;
+        if (rawBarber.barbers && Array.isArray(rawBarber.barbers) && rawBarber.barbers.length > 0) {
+          return (
+            <div style={{ marginTop: 12, marginBottom: 16 }}>
+              <h3 style={{ fontSize: '1.2em', marginBottom: 8 }}>Barbers at this shop:</h3>
+              {rawBarber.barbers.map((b: any, idx: number) => (
+                <div key={b.id || idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginRight: 16, marginBottom: 8, padding: '6px 12px', background: '#1f2937', borderRadius: 6, border: '1px solid #374151' }}>
+                  <strong style={{ color: '#60a5fa' }}>{b.name}</strong>
+                  {b.is_claimed && (
+                    <span style={{ fontSize: '0.75em', padding: '2px 8px', background: '#10b981', color: '#fff', borderRadius: 4, fontWeight: 600 }}>✓ CLAIMED</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        }
+        return null;
+      })()}
       <p><strong>Shop:</strong> {barber.shop}</p>
+      {(() => {
+        const rawBarber = barber as any;
+        if (rawBarber.website) {
+          return (
+            <p>
+              <strong>Website:</strong>{' '}
+              <a href={rawBarber.website} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', textDecoration: 'underline' }}>
+                {rawBarber.website}
+              </a>
+            </p>
+          );
+        }
+        return null;
+      })()}
       <p><strong>Distance:</strong> {barber.distance}</p>
       <p><strong>Trust:</strong> {barber.trust}</p>
       <p><strong>Specialties:</strong> {barber.specialties?.join ? barber.specialties.join(', ') : JSON.stringify(barber.specialties)}</p>
@@ -194,11 +229,18 @@ export default function ShopPage(): React.ReactElement {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {comments.map((c: any, i: number) => (
               <div key={i} style={{ padding: 12, borderRadius: 8, background: '#0b111a', color: '#e7eef7', border: '1px solid #1f2b36' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-                  <strong>{c.author || c.user || 'Anonymous'}</strong>
-                  <small style={{ color: '#8fa3b5' }}>{c.date || c.time || ''}</small>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+                  <strong>{c.author || c.user || c.extracted_names || 'Anonymous'}</strong>
+                  {c.barber_name && <span style={{ color: '#60a5fa', fontSize: '0.9em' }}>→ {c.barber_name}</span>}
+                  {c.rating && <span style={{ color: '#fbbf24' }}>★ {c.rating}/5</span>}
+                  <small style={{ color: '#8fa3b5' }}>{c.date || c.time || (c.created_at ? new Date(c.created_at).toLocaleDateString() : '')}</small>
                 </div>
-                <div style={{ marginTop: 6 }}>{c.text || c.comment || c.body || JSON.stringify(c)}</div>
+                <div style={{ marginTop: 6 }}>{c.text || c.summary || c.comment || c.body || JSON.stringify(c)}</div>
+                {c.hairstyles && Array.isArray(c.hairstyles) && c.hairstyles.length > 0 && (
+                  <div style={{ marginTop: 8, fontSize: '0.85em', color: '#9ca3af' }}>
+                    <strong>Hairstyles:</strong> {c.hairstyles.join(', ')}
+                  </div>
+                )}
               </div>
             ))}
           </div>

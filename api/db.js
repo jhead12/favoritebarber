@@ -1,5 +1,7 @@
 const { Pool } = require('pg');
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/rateyourbarber';
+// Prefer DATABASE_URL when provided (tests set this), otherwise default to
+// the local test database used by unit tests for parity.
+const connectionString = process.env.DATABASE_URL || 'postgresql://localhost/favorite_barber_test';
 const pool = new Pool({ connectionString });
 
 async function query(text, params) {
