@@ -266,7 +266,7 @@ app.get('/api/search', async (req, res) => {
             )) AS distance_m
           FROM yelp_businesses
           WHERE latitude IS NOT NULL AND longitude IS NOT NULL
-          HAVING (6371000 * acos(
+            AND (6371000 * acos(
               cos(radians($1::double precision)) * cos(radians(latitude)) * cos(radians(longitude) - radians($2::double precision))
               + sin(radians($1::double precision)) * sin(radians(latitude))
             )) <= $3
