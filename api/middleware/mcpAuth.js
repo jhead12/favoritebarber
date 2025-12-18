@@ -65,6 +65,8 @@ async function authenticateMCP(req, res, next) {
     `, [keyPrefix]);
 
     if (keyResult.rows.length === 0) {
+      // Debug: log missing prefix for troubleshooting test failures
+      try { logger.info({ key_prefix: keyPrefix, rows: 0 }, 'MCP auth lookup: no rows'); } catch (e) { /* ignore */ }
       return res.status(401).json({
         error: {
           code: 'invalid_key',
@@ -74,6 +76,8 @@ async function authenticateMCP(req, res, next) {
     }
 
     const keyRecord = keyResult.rows[0];
+    // Debug: log found key and partner status (no sensitive data)
+    try { logger.info({ key_prefix: keyPrefix, key_id: keyRecord.id, partner_status: keyRecord.partner_status }, 'MCP auth lookup: found key'); } catch (e) { /* ignore */ }
 
     // Verify key hash (compare full key against stored bcrypt hash)
     const isValid = await bcrypt.compare(apiKey, keyRecord.key_hash);
